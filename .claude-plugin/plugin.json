@@ -1,7 +1,7 @@
 {
   "name": "hangul",
   "version": "0.1.0",
-  "description": "Type Hangul in the Claude Code prompt box without an OS IME (dubeolsik, sebeolsik 390, sebeolsik final)",
+  "description": "OS 한글 입력기 없이 Claude Code 프롬프트에서 두벌식·세벌식 390·세벌식 최종으로 한글을 친다",
   "author": {
     "name": "준명 정"
   }
