@@ -1,0 +1,11 @@
+{
+  "name": "claude-hangul",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Claude Code mod prototype: type Hangul in the prompt box without an OS IME (dubeolsik / sebeolsik 390 / sebeolsik final)",
+  "type": "module",
+  "scripts": {
+    "test": "node tools/make-shim.mjs && bun test core/",
+    "test:claude": "claude plugin test ."
+  }
+}
