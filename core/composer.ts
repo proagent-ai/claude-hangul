@@ -7,10 +7,13 @@
 //        (겹받침이면 뒤 자모만 넘어간다. 시프트로 직접 친 ㄲ/ㅆ 받침은 한 덩어리로 넘어간다.)
 //      - 받침이 될 수 없는 자음(ㄸ ㅃ ㅉ) 또는 결합 불가 자음은 현재 음절을 확정하고 새 음절을 연다.
 //  * 세벌식(kind 'sebeol'): 키가 역할(초/중/종)을 고정한다. 도깨비불 없음.
-//      - 한 음절 안에서는 초·중·종 입력 순서가 무관하다(모아치기식). 비어 있는 칸에 들어간다.
-//      - 이미 찬 칸에 같은 역할이 오면, 결합 규칙(쌍자음/겹모음/겹받침)이 있으면 결합하고 없으면 확정 후 새 음절.
-//      - 초성 겹치기는 중성·종성이 비어 있을 때만. 겹모음은 종성이 비어 있을 때만, 앞 모음이 먼저여야 한다(ㅗ→ㅏ).
-//        (모음끼리의 순서 무관은 지원하지 않는다: 이것은 이 프로토타입의 설계 선택이며 실제 세벌식 IME와의 대조는 미확인.)
+//      - 기본(autoReorder true): 한 음절 안에서 초·중·종 입력 순서가 무관하다. 비어 있는 칸에 들어간다.
+//        libhangul 의 option_auto_reorder 를 켠 것과 같다. libhangul 기본값(hangul_ic_new)은 false 라서,
+//        기본 libhangul 은 중·종이 이미 있으면 빈 초성을 채우지 않고 확정한다. 순서 무관은 SPEC 4.2 의 설계 선택.
+//      - autoReorder false: 그 기본 libhangul 처럼, 빈 초성인데 중/종이 있거나 빈 중성인데 종이 있으면 확정 후 새 음절.
+//      - 이미 찬 칸에 같은 역할이 오면, 결합 규칙이 있으면 결합하고 없으면 확정 후 새 음절.
+//      - 초성 겹치기는 중성·종성이 비어 있을 때만. 겹모음은 종성이 없고 앞 모음이 스택의 마지막일 때만(ㅗ→ㅏ).
+//        모음끼리의 순서 무관은 없다. libhangul 도 peek 가 중성일 때만 겹모음을 합친다.
 //  * 백스페이스는 조합 중인 음절 안에서 입력 이전 상태로 되돌린다(자모 단위 해체). 이미 확정된 글자는 건드리지 않는다.
 //  * 레이아웃에 없는 키(공백, 숫자 등)는 consumed=false 로 돌려주고, 조합 중이던 글자는 확정시킨다.
 import { CHO_COMBINE, composeSyllable, isCho, isJong, JONG_COMBINE, JUNG_COMBINE } from './jamo'
@@ -81,6 +84,9 @@ function tryJung(s: Syl, v: string): Syl | undefined {
 function dubeolVowel(s: Syl, v: string): Step {
   if (s.jong.length > 0) {
     // 도깨비불: 마지막 받침 자모가 다음 음절의 초성이 된다.
+    // libhangul hangul_ic_process_jamo: 종성 뒤 중성이면 pop. peek 가 종성이면
+    // hangul_jongseong_get_diff 로 뒤 자모만 초성으로 넘기고, 아니면 종성 전체를 초성으로 넘긴다.
+    // ㄱ+ㄱ→ㄲ 는 diff 가 ㄱ을 넘긴다(낚+ㅣ→낙기). 시프트로 한 번에 넣은 ㅆ/ㄲ 는 스택에 한 덩어리라 통째로 넘어간다.
     const moved = s.jong[s.jong.length - 1]!
     const stay: Syl = { ...s, jong: s.jong.slice(0, -1) }
     const first: Syl = { ...EMPTY, cho: moved }
@@ -91,8 +97,12 @@ function dubeolVowel(s: Syl, v: string): Step {
   return { commit: render(s), next: { ...EMPTY, jung: v } }
 }
 
-function sebeolCho(s: Syl, c: string): Step {
-  if (s.cho === '') return { commit: '', next: { ...s, cho: c } }
+function sebeolCho(s: Syl, c: string, autoReorder: boolean): Step {
+  if (s.cho === '') {
+    // libhangul process_jaso, auto_reorder 꺼짐: 중성이나 종성이 이미 있으면 빈 초성을 채우지 않고 확정한다.
+    if (!autoReorder && (s.jung !== '' || s.jong.length > 0)) return { commit: render(s), next: { ...EMPTY, cho: c } }
+    return { commit: '', next: { ...s, cho: c } }
+  }
   if (s.jung === '' && s.jong.length === 0) {
     const combined = CHO_COMBINE[s.cho + c]
     if (combined !== undefined) return { commit: '', next: { ...s, cho: combined } }
@@ -100,7 +110,9 @@ function sebeolCho(s: Syl, c: string): Step {
   return { commit: render(s), next: { ...EMPTY, cho: c } }
 }
 
-function sebeolJung(s: Syl, v: string): Step {
+function sebeolJung(s: Syl, v: string, autoReorder: boolean): Step {
+  // libhangul process_jaso, auto_reorder 꺼짐: 종성이 있으면 빈 중성을 채우지 않고 확정한다.
+  if (!autoReorder && s.jung === '' && s.jong.length > 0) return { commit: render(s), next: { ...EMPTY, jung: v } }
   const joined = tryJung(s, v)
   if (joined !== undefined) return { commit: '', next: joined }
   return { commit: render(s), next: { ...EMPTY, jung: v } }
@@ -124,8 +136,13 @@ export interface FeedResult {
 }
 
 export interface ComposerOptions {
-  /** true 면 레이아웃의 기호/숫자 치환(lit)을 무시하고 원래 문자를 통과시킨다. 기본 false. */
+  /** true 면 레이아웃의 기호/숫자 치환(lit)을 무시하고 원래 문자를 통과시킨다. 기본 false. 슬래시 명령에는 노출하지 않는다. */
   readonly passthroughLiterals?: boolean
+  /**
+   * 세벌식에서 빈 초·중·종 칸을 입력 순서와 무관하게 채울지. 기본 true (SPEC 4.2).
+   * false 는 libhangul 기본(option_auto_reorder = false)과 같이 역순이면 확정한다.
+   */
+  readonly autoReorder?: boolean
 }
 
 export class HangulComposer {
@@ -184,12 +201,13 @@ export class HangulComposer {
     const jamo = def.jamo
     const prev = this.syl
     let step: Step
+    const reorder = this.options.autoReorder !== false
     if (this.layout.kind === 'dubeol') {
       if (def.role === 'jung') step = dubeolVowel(prev, jamo)
       else if (!isCho(jamo)) step = { commit: this.flush(), next: EMPTY } // 방어: 두벌식 표에 없는 자음
       else step = dubeolConsonant(prev, jamo)
-    } else if (def.role === 'cho') step = sebeolCho(prev, jamo)
-    else if (def.role === 'jung') step = sebeolJung(prev, jamo)
+    } else if (def.role === 'cho') step = sebeolCho(prev, jamo, reorder)
+    else if (def.role === 'jung') step = sebeolJung(prev, jamo, reorder)
     else step = sebeolJong(prev, jamo)
 
     if (step.commit !== '') this.history = [...(step.seed ?? [EMPTY])]

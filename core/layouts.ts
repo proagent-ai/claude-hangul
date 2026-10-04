@@ -20,7 +20,7 @@ export const LAYOUTS: Readonly<Record<LayoutId, Layout>> = {
 
 const ALIASES: Readonly<Record<string, LayoutId>> = {
   '2': 'dubeolsik', dubeol: 'dubeolsik', dubeolsik: 'dubeolsik', 두벌식: 'dubeolsik',
-  '390': 'sebeolsik-390', '3-90': 'sebeolsik-390', '39': 'sebeolsik-390', 'sebeolsik-390': 'sebeolsik-390', 세벌식390: 'sebeolsik-390', '세벌식390': 'sebeolsik-390',
+  '390': 'sebeolsik-390', '3-90': 'sebeolsik-390', '39': 'sebeolsik-390', 'sebeolsik-390': 'sebeolsik-390', 세벌식390: 'sebeolsik-390',
   final: 'sebeolsik-final', '3f': 'sebeolsik-final', '3final': 'sebeolsik-final', 'sebeolsik-final': 'sebeolsik-final', 세벌식최종: 'sebeolsik-final',
 }
 

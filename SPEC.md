@@ -28,7 +28,7 @@
 ```
 .claude-plugin/plugin.json      플러그인 매니페스트 (name: hangul)
 hooks/hooks.json                { "modules": ["./register.tsx"] }
-hooks/register.tsx              훅 등록: session.start / command.run(hangul, 한글) / prompt.edit / prompt.submit   [미검증]
+hooks/register.tsx              훅 등록: session.start / command.run(hangul) / prompt.edit / prompt.submit
 hooks/editor.ts                 prompt.edit ↔ 코어 어댑터 (HangulEditor)                                           [미검증]
 hooks/editor.test.ts            어댑터 테스트 16개 (claude-code/testing)
 hooks/register.test.tsx         register 테스트 4개 (claude-code/testing)
@@ -44,7 +44,7 @@ tools/make-shim.mjs             단독 bun test 용 claude-code/testing 심 (nod
 package.json / tsconfig.json / .gitignore / README.md
 ```
 
-### 테스트 현황 (2026-10-04, 박스, claude CLI 2.1.278)
+### 테스트 현황 (2026-10-04, 샌드박스 claude CLI 2.1.289. 통과 수는 PR/아래 명령을 본다)
 - `bun run test` → core 91 통과 / 0 실패.
 - `claude plugin test .` → **111 통과 / 0 실패** (core 91 + 어댑터 16 + register 4).
 - `claude plugin validate .claude-plugin/plugin.json` → 통과.
@@ -101,19 +101,20 @@ package.json / tsconfig.json / .gitignore / README.md
 | `sebeolsik-390` | 세벌식 390 | sebeol | 초성=오른쪽, 종성=왼쪽, 모음=가운데. 숫자·기호 일부 치환(`lit`) |
 | `sebeolsik-final` | 세벌식 최종 | sebeol | 겹받침 전용 키 전부 보유. 숫자 시프트 위치 |
 
-매핑 출처: libhangul `data/keyboards/hangul-keyboard-{2,39,3f}.xml.template` (commit `5094421d9586294b2aad09924b9a54e2e6060f06`). 독립 문헌 대조 **미확인**(§6).
+매핑 출처: libhangul `data/keyboards/hangul-keyboard-{2,39,3f}.xml.template` (commit `5094421d9586294b2aad09924b9a54e2e6060f06`). 키별 대조: GNU Emacs `lisp/leim/quail/hangul.el`, uim `scm/byeoru.scm`. 자모는 세 구현 불일치 0. 세벌식 최종 `|` 만 uim 이 `₩`(표는 libhangul·Emacs 의 백슬래시). KS X 5002 PDF 와 한글문화원 인쇄 도표는 구하지 못해 **표준 원문 대조는 미확인**.
 
 ### 4.2 조합 규칙 (구현·테스트 완료, 회귀 금지)
 1. 두벌식 **도깨비불**: `rkf`+`k` → `가라`; 겹받침은 뒤 자모만 이동(`닭`+`ㅣ` → `달기`); 쌍받침 ㄱㄱ은 분리(`낚`+`ㅣ` → `낙기`).
 2. **겹받침** 11종(ㄳ ㄵ ㄶ ㄺ ㄻ ㄼ ㄽ ㄾ ㄿ ㅀ ㅄ) 및 쌍받침(ㄲ ㅆ). 두벌식은 자음 연타, 세벌식은 받침 키 연타 또는 전용 키.
 3. **겹모음** 7종(ㅘ ㅙ ㅚ ㅝ ㅞ ㅟ ㅢ), 앞 모음 먼저. 받침이 있으면 결합하지 않음.
 4. **자모 단위 백스페이스**: `글→그→ㄱ→(빈)`, `닭→달→다→ㄷ`, `와→오→ㅇ`. 조합이 없으면 편집기에 넘김(`consumed:false`).
-5. **세벌식 순서 무관 조합**: 한 음절 안에서 초·중·종 6가지 순서가 모두 같은 글자. 단 모음끼리 겹모음은 순서 고정(설계 선택, 실제 IME와 대조 **미확인**).
+5. **세벌식 순서 무관 조합**: 기본(`autoReorder` true, `HANGUL_SEBEOL_ORDER` 미설정)은 한 음절 안에서 초·중·종 6가지 순서가 모두 같은 글자. libhangul `option_auto_reorder=true` 와 같고, libhangul 기본값(false, `hangul_ic_new`)과는 다르다. `autoReorder: false` / `HANGUL_SEBEOL_ORDER=strict` 이면 역순은 확정한다. 겹모음은 종성이 없고 앞 모음이 먼저일 때만(libhangul 도 peek 가 중성일 때만 결합). macOS/Windows IME 실기 대조는 안 했다.
 6. 확정 규칙: 공백·레이아웃에 없는 키·ctrl/meta 키·붙여넣기·커서 이동은 조합 확정 후 통과.
 
 ### 4.3 mod 껍데기 (**전부 미검증**)
-- `/hangul` 토글, `/hangul on|off`, `/hangul 2|390|final`(선택 즉시 켬), `/한글` 별칭(한글 이름 명령 허용 여부 **미검증**, 거부 시 영문만).
-- 시작 레이아웃: 환경변수 `HANGUL_LAYOUT=2|390|final` (기본 두벌식). 설정 파일 방식은 미구현.
+- `/hangul` 토글, `/hangul on|off`, `/hangul 2|390|final`(선택 즉시 켬). `/한글` 은 쓰지 않는다. 2.1.289 명령 이름은 `^[a-zA-Z0-9_-]{1,64}$` 라 한글 이름은 등록되지 않았다(세션 로그에 `/hangul listed` 만 있고 `/한글` 은 없음).
+- 시작 레이아웃: 환경변수 `HANGUL_LAYOUT=2|390|final` (기본 두벌식). `HANGUL_SEBEOL_ORDER=strict` 이면 세벌식 `autoReorder` 를 끈다(기본은 순서 무관). `$.store` 는 타입에 있으나 레이아웃 기억에는 쓰지 않는다. 세션 간 저장 실측은 안 했다.
+- `command.run` 의 인자 필드명은 생성 타입 `CommandRunInput.args: string` 이다. 캐스트는 제거했다.
 - 상태줄: 켜짐 `한 두벌식` / `한 세벌식 390` / `한 세벌식 최종`, 꺼짐 `undefined`(지움), reload 직후에도 지움. 표시 형식·길이 적합성 **미검증**.
 - 끄면 조합 중인 글자는 입력창에 확정된 채 남음.
 
@@ -132,7 +133,7 @@ package.json / tsconfig.json / .gitignore / README.md
 | 선택영역 치환 | 확정 후 원문 통과 | **미검증** |
 | 외부 변경 | 조합 구간 텍스트가 달라지면 조합 폐기 | 모의 테스트만 |
 | ctrl/meta 조합 | 확정 후 통과 | **미검증** |
-| 세벌식 숫자·기호 치환 | 표대로 적용(예: 390 `<`→`2`, 최종 `J`→`1`). 이 행들은 모두 '미확인'. 옵션 `passthroughLiterals`로 해제 가능하나 슬래시 명령/설정에 노출 안 함 | 노출 여부 결정 필요 |
+| 세벌식 숫자·기호 치환 | 표대로 적용(예: 390 `<`→`2`, 최종 `J`→`1`). libhangul·Emacs·uim 일치. KS/문화원 원문은 미확인. 최종 세로막대 키만 uim 이 `₩`(표는 백슬래시). `passthroughLiterals` 는 코드 옵션만, 명령에는 없음 | 명령 노출 안 함으로 결정 |
 | Caps Lock | 대문자로 들어오면 두벌식은 소문자와 같고 세벌식은 시프트 키로 해석 | **미검증** |
 | 비동기 대기 중 키 | 코어가 동기라 vime식 `raw` 복구 불필요하다고 가정 | **미검증** |
 

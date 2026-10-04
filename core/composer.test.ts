@@ -106,8 +106,11 @@ describe('두벌식: 도깨비불(받침이 다음 모음으로 넘어감)', () 
     expect(d('dkswk')).toBe('안자')
   })
   test('쌍받침(ㄱㄱ)은 분리: 낚 + ㅣ → 낙기 (skrrl)', () => expect(d('skrrl')).toBe('낙기'))
-  test('시프트로 직접 친 ㅆ 받침은 한 덩어리로 넘어간다: 았 + ㅏ → 아싸 (dkTk) [실제 IME 동작 대조 미확인]', () => {
+  test('시프트 ㅆ 은 한 덩어리로 넘어간다: 았+ㅏ→아싸 (dkTk). 근거: libhangul process_jamo, peek 가 종성이 아니면 jongseong_to_choseong(pop)', () => {
     expect(d('dkTk')).toBe('아싸')
+  })
+  test('시프트 ㄲ 도 한 덩어리: 갂+ㅏ→가까 (rkRk). ㄱ+ㄱ 으로 만든 ㄲ(낚+ㅣ→낙기)와 다르다', () => {
+    expect(d('rkRk')).toBe('가까')
   })
   test('받침 없는 음절 뒤 모음은 새 음절(도깨비불 아님): 가 + ㅏ → 가ㅏ', () => expect(d('rkk')).toBe('가ㅏ'))
   test('연속: 한국어 = gksrnrdj (한 / 국 / 어)', () => expect(d('gksrnrdj')).toBe('한국어'))
@@ -270,7 +273,7 @@ describe('세벌식 390', () => {
   })
 })
 
-describe('세벌식: 순서 무관 조합(한 음절 안에서 초·중·종 입력 순서가 달라도 같은 글자)', () => {
+describe('세벌식: 순서 무관은 기본값. libhangul 기본(option_auto_reorder=false, hangul_ic_new)과 다르고 SPEC 4.2 의 설계 선택이다', () => {
   const PERMS = (a: string, b: string, c: string) => [a + b + c, a + c + b, b + a + c, b + c + a, c + a + b, c + b + a]
   test('한 = {m(ㅎ), f(ㅏ), s(ㄴ)} 의 6가지 순서 모두', () => {
     for (const keys of PERMS('m', 'f', 's')) expect(s3(keys)).toBe('한')
@@ -293,6 +296,14 @@ describe('세벌식: 순서 무관 조합(한 음절 안에서 초·중·종 입
   test('겹모음은 받침이 없을 때만: 곡(k v x) 뒤 ㅏ → 곡ㅏ', () => {
     expect(s3('kvxf')).toBe('곡ㅏ')
   })
+})
+
+describe('세벌식 autoReorder:false 는 libhangul 기본(process_jaso, auto_reorder 꺼짐)처럼 역순을 확정한다', () => {
+  const strict = (keys: string) => make('sebeolsik-390', { autoReorder: false }).typeAll(keys)
+  test('정순 mfs 는 그대로 한', () => expect(strict('mfs')).toBe('한'))
+  test('종성 다음 중성은 채우지 않고 확정: sf → ㄴㅏ', () => expect(strict('sf')).toBe('ㄴㅏ'))
+  test('중성 다음 초성은 채우지 않고 확정: fm → ㅏㅎ', () => expect(strict('fm')).toBe('ㅏㅎ'))
+  test('sfm(ㄴ ㅏ ㅎ) → ㄴㅏㅎ. 기본 autoReorder 의 한 과 다르다', () => expect(strict('sfm')).toBe('ㄴㅏㅎ'))
 })
 
 describe('세벌식 최종', () => {

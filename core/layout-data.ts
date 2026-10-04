@@ -1,42 +1,43 @@
 // 자동 생성 파일: tools/gen-layout.mjs (직접 고치지 말고 생성기를 고칠 것)
 // 출처: libhangul (https://github.com/libhangul/libhangul) data/keyboards/hangul-keyboard-{2,39,3f}.xml.template
 //   commit 5094421d9586294b2aad09924b9a54e2e6060f06 (2026-09-14)
-// 검증 상태:
-//   - 자모 키(소문자·숫자·; ' /)는 libhangul과 작성자 기억이 일치했으나, 독립 문헌/공식 표준(KS X 5002, 공병우 도표)과의
-//     대조는 수행하지 못함 → 전체적으로 "단일 출처, 독립 대조 미확인".
+// 검증 상태 (2026-10-04, 키별 대조. KS X 5002 PDF·한글문화원 인쇄 도표는 구하지 못함 → 표준 원문 대조는 미확인):
+//   - 두벌식 자모 52키: libhangul = GNU Emacs lisp/leim/quail/hangul.el (2-bulsik) = uim scm/byeoru.scm (hangul2). 불일치 0.
+//   - 세벌식 390 자모+기호: libhangul = Emacs (390) = uim (strict390). 불일치 0.
+//   - 세벌식 최종 자모: libhangul = Emacs (final) = uim (strict3final). 불일치 0.
+//   - 세벌식 최종 기호: Emacs와 전부 일치. uim만 '|' 가 ₩ (libhangul·Emacs는 백슬래시). 그 행에만 적었다.
 //   - 항등 매핑(키가 자기 문자로 나오는 것)은 생략했다. 표에 없는 키 = 그대로 통과.
-//   - 세벌식의 시프트/기호 위치는 개별 행에 '미확인'을 달았다.
 import { cho, cons, jong, jung, lit } from './keydef'
 import type { KeyDef } from './keydef'
 
 /** 두벌식 (KS X 5002). cons = 초성·종성 겸용 자음. */
 export const DUBEOLSIK: Readonly<Record<string, KeyDef>> = {
-  "A": cons('ㅁ'), // 대문자=소문자와 동일(libhangul 기준)
-  "B": jung('ㅠ'), // 대문자=소문자와 동일(libhangul 기준)
-  "C": cons('ㅊ'), // 대문자=소문자와 동일(libhangul 기준)
-  "D": cons('ㅇ'), // 대문자=소문자와 동일(libhangul 기준)
+  "A": cons('ㅁ'), // 대문자=소문자와 동일 (libhangul·Emacs·uim 일치, KS X 5002 원문 미확인)
+  "B": jung('ㅠ'), // 대문자=소문자와 동일 (libhangul·Emacs·uim 일치, KS X 5002 원문 미확인)
+  "C": cons('ㅊ'), // 대문자=소문자와 동일 (libhangul·Emacs·uim 일치, KS X 5002 원문 미확인)
+  "D": cons('ㅇ'), // 대문자=소문자와 동일 (libhangul·Emacs·uim 일치, KS X 5002 원문 미확인)
   "E": cons('ㄸ'),
-  "F": cons('ㄹ'), // 대문자=소문자와 동일(libhangul 기준)
-  "G": cons('ㅎ'), // 대문자=소문자와 동일(libhangul 기준)
-  "H": jung('ㅗ'), // 대문자=소문자와 동일(libhangul 기준)
-  "I": jung('ㅑ'), // 대문자=소문자와 동일(libhangul 기준)
-  "J": jung('ㅓ'), // 대문자=소문자와 동일(libhangul 기준)
-  "K": jung('ㅏ'), // 대문자=소문자와 동일(libhangul 기준)
-  "L": jung('ㅣ'), // 대문자=소문자와 동일(libhangul 기준)
-  "M": jung('ㅡ'), // 대문자=소문자와 동일(libhangul 기준)
-  "N": jung('ㅜ'), // 대문자=소문자와 동일(libhangul 기준)
+  "F": cons('ㄹ'), // 대문자=소문자와 동일 (libhangul·Emacs·uim 일치, KS X 5002 원문 미확인)
+  "G": cons('ㅎ'), // 대문자=소문자와 동일 (libhangul·Emacs·uim 일치, KS X 5002 원문 미확인)
+  "H": jung('ㅗ'), // 대문자=소문자와 동일 (libhangul·Emacs·uim 일치, KS X 5002 원문 미확인)
+  "I": jung('ㅑ'), // 대문자=소문자와 동일 (libhangul·Emacs·uim 일치, KS X 5002 원문 미확인)
+  "J": jung('ㅓ'), // 대문자=소문자와 동일 (libhangul·Emacs·uim 일치, KS X 5002 원문 미확인)
+  "K": jung('ㅏ'), // 대문자=소문자와 동일 (libhangul·Emacs·uim 일치, KS X 5002 원문 미확인)
+  "L": jung('ㅣ'), // 대문자=소문자와 동일 (libhangul·Emacs·uim 일치, KS X 5002 원문 미확인)
+  "M": jung('ㅡ'), // 대문자=소문자와 동일 (libhangul·Emacs·uim 일치, KS X 5002 원문 미확인)
+  "N": jung('ㅜ'), // 대문자=소문자와 동일 (libhangul·Emacs·uim 일치, KS X 5002 원문 미확인)
   "O": jung('ㅒ'),
   "P": jung('ㅖ'),
   "Q": cons('ㅃ'),
   "R": cons('ㄲ'),
-  "S": cons('ㄴ'), // 대문자=소문자와 동일(libhangul 기준)
+  "S": cons('ㄴ'), // 대문자=소문자와 동일 (libhangul·Emacs·uim 일치, KS X 5002 원문 미확인)
   "T": cons('ㅆ'),
-  "U": jung('ㅕ'), // 대문자=소문자와 동일(libhangul 기준)
-  "V": cons('ㅍ'), // 대문자=소문자와 동일(libhangul 기준)
+  "U": jung('ㅕ'), // 대문자=소문자와 동일 (libhangul·Emacs·uim 일치, KS X 5002 원문 미확인)
+  "V": cons('ㅍ'), // 대문자=소문자와 동일 (libhangul·Emacs·uim 일치, KS X 5002 원문 미확인)
   "W": cons('ㅉ'),
-  "X": cons('ㅌ'), // 대문자=소문자와 동일(libhangul 기준)
-  "Y": jung('ㅛ'), // 대문자=소문자와 동일(libhangul 기준)
-  "Z": cons('ㅋ'), // 대문자=소문자와 동일(libhangul 기준)
+  "X": cons('ㅌ'), // 대문자=소문자와 동일 (libhangul·Emacs·uim 일치, KS X 5002 원문 미확인)
+  "Y": jung('ㅛ'), // 대문자=소문자와 동일 (libhangul·Emacs·uim 일치, KS X 5002 원문 미확인)
+  "Z": cons('ㅋ'), // 대문자=소문자와 동일 (libhangul·Emacs·uim 일치, KS X 5002 원문 미확인)
   "a": cons('ㅁ'),
   "b": jung('ㅠ'),
   "c": cons('ㅊ'),
@@ -67,7 +68,7 @@ export const DUBEOLSIK: Readonly<Record<string, KeyDef>> = {
 
 /** 세벌식 390 (libhangul id "39"). cho/jung/jong 은 키마다 고정된 역할. */
 export const SEBEOLSIK_390: Readonly<Record<string, KeyDef>> = {
-  "!": jong('ㅈ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
+  "!": jong('ㅈ'),
   "'": cho('ㅌ'),
   "/": jung('ㅗ'),
   "0": cho('ㅋ'),
@@ -81,34 +82,34 @@ export const SEBEOLSIK_390: Readonly<Record<string, KeyDef>> = {
   "8": jung('ㅢ'),
   "9": jung('ㅜ'),
   ";": cho('ㅂ'),
-  "<": lit("2"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  ">": lit("3"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "A": jong('ㄷ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "B": lit("!"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "C": jong('ㄻ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "D": jong('ㄺ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "E": jong('ㅋ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "F": jong('ㄲ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "G": lit("/"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "H": lit("'"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "I": lit("8"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "J": lit("4"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "K": lit("5"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "L": lit("6"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "M": lit("1"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "N": lit("0"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "O": lit("9"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "P": lit(">"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "Q": jong('ㅍ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "R": jung('ㅒ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "S": jong('ㄶ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "T": lit(";"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "U": lit("7"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "V": jong('ㅀ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "W": jong('ㅌ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "X": jong('ㅄ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "Y": lit("<"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "Z": jong('ㅊ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
+  "<": lit("2"),
+  ">": lit("3"),
+  "A": jong('ㄷ'),
+  "B": lit("!"),
+  "C": jong('ㄻ'),
+  "D": jong('ㄺ'),
+  "E": jong('ㅋ'),
+  "F": jong('ㄲ'),
+  "G": lit("/"),
+  "H": lit("'"),
+  "I": lit("8"),
+  "J": lit("4"),
+  "K": lit("5"),
+  "L": lit("6"),
+  "M": lit("1"),
+  "N": lit("0"),
+  "O": lit("9"),
+  "P": lit(">"),
+  "Q": jong('ㅍ'),
+  "R": jung('ㅒ'),
+  "S": jong('ㄶ'),
+  "T": lit(";"),
+  "U": lit("7"),
+  "V": jong('ㅀ'),
+  "W": jong('ㅌ'),
+  "X": jong('ㅄ'),
+  "Y": lit("<"),
+  "Z": jong('ㅊ'),
   "a": jong('ㅇ'),
   "b": jung('ㅜ'),
   "c": jung('ㅔ'),
@@ -139,17 +140,17 @@ export const SEBEOLSIK_390: Readonly<Record<string, KeyDef>> = {
 
 /** 세벌식 최종 (libhangul id "3f"). */
 export const SEBEOLSIK_FINAL: Readonly<Record<string, KeyDef>> = {
-  "!": jong('ㄲ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "\"": lit("·"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "#": jong('ㅈ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "$": jong('ㄿ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "%": jong('ㄾ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "&": lit("“"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
+  "!": jong('ㄲ'),
+  "\"": lit("·"),
+  "#": jong('ㅈ'),
+  "$": jong('ㄿ'),
+  "%": jong('ㄾ'),
+  "&": lit("“"),
   "'": cho('ㅌ'),
-  "(": lit("'"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  ")": lit("~"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "*": lit("”"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "-": lit(")"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
+  "(": lit("'"),
+  ")": lit("~"),
+  "*": lit("”"),
+  "-": lit(")"),
   "/": jung('ㅗ'),
   "0": cho('ㅋ'),
   "1": jong('ㅎ'),
@@ -161,45 +162,45 @@ export const SEBEOLSIK_FINAL: Readonly<Record<string, KeyDef>> = {
   "7": jung('ㅖ'),
   "8": jung('ㅢ'),
   "9": jung('ㅜ'),
-  ":": lit("4"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
+  ":": lit("4"),
   ";": cho('ㅂ'),
-  "<": lit(","), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "=": lit(">"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  ">": lit("."), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "?": lit("!"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "@": jong('ㄺ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "A": jong('ㄷ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "B": lit("?"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "C": jong('ㅋ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "D": jong('ㄼ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "E": jong('ㄵ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "F": jong('ㄻ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "G": jung('ㅒ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "H": lit("0"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "I": lit("7"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "J": lit("1"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "K": lit("2"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "L": lit("3"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "M": lit("\""), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "N": lit("-"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "O": lit("8"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "P": lit("9"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "Q": jong('ㅍ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "R": jong('ㅀ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "S": jong('ㄶ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "T": jong('ㄽ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "U": lit("6"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "V": jong('ㄳ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "W": jong('ㅌ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "X": jong('ㅄ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "Y": lit("5"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "Z": jong('ㅊ'), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "[": lit("("), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "\\": lit(":"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "]": lit("<"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "^": lit("="), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "_": lit(";"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "`": lit("*"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
+  "<": lit(","),
+  "=": lit(">"),
+  ">": lit("."),
+  "?": lit("!"),
+  "@": jong('ㄺ'),
+  "A": jong('ㄷ'),
+  "B": lit("?"),
+  "C": jong('ㅋ'),
+  "D": jong('ㄼ'),
+  "E": jong('ㄵ'),
+  "F": jong('ㄻ'),
+  "G": jung('ㅒ'),
+  "H": lit("0"),
+  "I": lit("7"),
+  "J": lit("1"),
+  "K": lit("2"),
+  "L": lit("3"),
+  "M": lit("\""),
+  "N": lit("-"),
+  "O": lit("8"),
+  "P": lit("9"),
+  "Q": jong('ㅍ'),
+  "R": jong('ㅀ'),
+  "S": jong('ㄶ'),
+  "T": jong('ㄽ'),
+  "U": lit("6"),
+  "V": jong('ㄳ'),
+  "W": jong('ㅌ'),
+  "X": jong('ㅄ'),
+  "Y": lit("5"),
+  "Z": jong('ㅊ'),
+  "[": lit("("),
+  "\\": lit(":"),
+  "]": lit("<"),
+  "^": lit("="),
+  "_": lit(";"),
+  "`": lit("*"),
   "a": jong('ㅇ'),
   "b": jung('ㅜ'),
   "c": jung('ㅔ'),
@@ -226,9 +227,9 @@ export const SEBEOLSIK_FINAL: Readonly<Record<string, KeyDef>> = {
   "x": jong('ㄱ'),
   "y": cho('ㄹ'),
   "z": jong('ㅁ'),
-  "{": lit("%"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "|": lit("\\"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "}": lit("/"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
-  "~": lit("※"), // 미확인(libhangul 단일 출처, 공식 도표 대조 안 함)
+  "{": lit("%"),
+  "|": lit("\\"), // uim byeoru만 "₩". libhangul·Emacs hangul.el은 이 값. KS/문화원 원문 미확인
+  "}": lit("/"),
+  "~": lit("※"),
 }
 

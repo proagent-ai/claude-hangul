@@ -164,6 +164,44 @@ describe('HangulEditor (prompt.edit 어댑터)', () => {
     expect(b.editor.status()).toBeUndefined()
   })
 
+  test('return 키는 조합을 확정하고 편집기에 넘긴다', () => {
+    const b = newBox()
+    b.type('gks')
+    b.press({ key: 'return' })
+    expect(b.text).toBe('한')
+    expect(b.decorations).toEqual([])
+  })
+
+  test('선택영역 치환은 확정 후 원문 그대로', () => {
+    const b = newBox()
+    b.type('gks')
+    b.edit({ start: 0, end: 1, inputText: 'x' })
+    expect(b.text).toBe('x')
+    expect(b.decorations).toEqual([])
+  })
+
+  test('meta 조합은 확정하고 통과', () => {
+    const b = newBox()
+    b.type('gks')
+    b.press({ key: 'left', meta: true })
+    expect(b.text).toBe('한')
+    expect(b.decorations).toEqual([])
+  })
+
+  test('세벌식 최종에서 문장 중간의 / 는 ㅗ', () => {
+    const b = newBox('sebeolsik-final')
+    b.type('j/f')
+    expect(b.text).toBe('와')
+  })
+
+  test('조합 끝이 아닌 백스페이스는 자모 해체를 하지 않고 확정한다', () => {
+    const b = newBox()
+    b.type('gks')
+    b.edit({ start: 0, end: 0, inputText: '', key: { key: 'backspace' } })
+    expect(b.text).toBe('한')
+    expect(b.decorations).toEqual([])
+  })
+
   test('레이아웃 전환은 조합 상태를 비운다', () => {
     const b = newBox()
     b.type('gks')
