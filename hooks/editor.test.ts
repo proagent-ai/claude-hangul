@@ -56,12 +56,12 @@ describe('HangulEditor (prompt.edit 어댑터)', () => {
     expect(b.text).toBe('gks')
   })
 
-  test('두벌식 gksrmf → 한글, 조합 중인 마지막 글자에만 밑줄', () => {
+  test('두벌식 gksrmf → 한글. 열린 단어 전체에 밑줄', () => {
     const b = newBox()
     b.type('gksrmf')
     expect(b.text).toBe('한글')
     expect(b.cursor).toBe(2)
-    expect(b.decorations).toEqual([{ start: 1, end: 2, underline: true }])
+    expect(b.decorations).toEqual([{ start: 0, end: 2, underline: true }])
   })
 
   test('공백으로 확정되고 다음 단어가 이어진다', () => {
@@ -71,7 +71,7 @@ describe('HangulEditor (prompt.edit 어댑터)', () => {
     expect(b.decorations).toEqual([{ start: 2, end: 3, underline: true }])
   })
 
-  test('백스페이스는 자모 단위로 해체하고, 다 풀리면 확정된 글자를 지운다', () => {
+  test('백스페이스는 열린 단어의 키를 되돌리고, 단어가 비면 멈춘다', () => {
     const b = newBox()
     b.type('gksrmf')
     b.backspace()
@@ -80,7 +80,11 @@ describe('HangulEditor (prompt.edit 어댑터)', () => {
     expect(b.text).toBe('한r')
     b.backspace()
     expect(b.text).toBe('한')
-    b.backspace() // 조합이 없으니 편집기가 한 글자를 지운다
+    b.backspace()
+    expect(b.text).toBe('하')
+    b.backspace()
+    expect(b.text).toBe('g')
+    b.backspace()
     expect(b.text).toBe('')
   })
 
@@ -89,6 +93,13 @@ describe('HangulEditor (prompt.edit 어댑터)', () => {
     b.type('rkfk')
     expect(b.text).toBe('가라')
     expect(b.cursor).toBe(2)
+  })
+
+  test('세벌식 390: hello? 와 390 은 영어·숫자·기호 그대로', () => {
+    const b = newBox('sebeolsik-390')
+    b.type('hello? 390')
+    expect(b.text).toBe('hello? 390')
+    expect(b.decorations).toEqual([{ start: 7, end: 10, underline: true }])
   })
 
   test('세벌식 390: mfskgw → 한글', () => {

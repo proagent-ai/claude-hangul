@@ -92,7 +92,7 @@ describe('두벌식: 겹받침', () => {
   test('겹받침 뒤에 자음이 또 오면 확정: 읽다 = dlfrek', () => {
     expect(trace(make('dubeolsik'), 'dlfrek')).toEqual(['d', '이', '일', '읽', '읽e', '읽다'])
   })
-  test('결합 불가 조합(ㄴㄴ)은 원문으로 확정: 안ss', () => expect(d('dksss')).toBe('안ss'))
+  test('결합 불가 ㄴ 이 확정되면 단어 전체를 키로: dksss', () => expect(d('dksss')).toBe('dksss'))
 })
 
 describe('두벌식: 도깨비불(받침이 다음 모음으로 넘어감)', () => {
@@ -143,22 +143,26 @@ describe('두벌식: 백스페이스(자모 단위 해체)', () => {
     return seen
   }
   test('글(그+ㄹ): 글 → 그 → r → 빈', () => expect(bsAll('rmf', 3)).toEqual(['그', 'r', '']))
-  test('한글 입력 후 BS: 확정된 한은 건드리지 않는다', () => {
+  test('한글은 단어가 열려 있는 동안 키 단위로 되돌린다', () => {
     const c = make('dubeolsik')
     c.typeAll('gksrmf')
-    expect(c.backspace()).toEqual({ consumed: true, preedit: '그' })
-    expect(c.backspace()).toEqual({ consumed: true, preedit: 'r' })
+    expect(c.backspace()).toEqual({ consumed: true, preedit: '한그' })
+    expect(c.backspace()).toEqual({ consumed: true, preedit: '한r' })
+    expect(c.backspace()).toEqual({ consumed: true, preedit: '한' })
+    expect(c.backspace()).toEqual({ consumed: true, preedit: '하' })
+    expect(c.backspace()).toEqual({ consumed: true, preedit: 'g' })
     expect(c.backspace()).toEqual({ consumed: true, preedit: '' })
-    expect(c.backspace()).toEqual({ consumed: false, preedit: '' }) // 이제 편집기가 "한"을 지운다
+    expect(c.backspace()).toEqual({ consumed: false, preedit: '' })
   })
   test('겹받침 해체: 닭 → 달 → 다 → e', () => expect(bsAll('ekfr', 3)).toEqual(['달', '다', 'e']))
   test('겹모음 해체: 와 → 오 → d', () => expect(bsAll('dhk', 2)).toEqual(['오', 'd']))
-  test('도깨비불 뒤 BS: 가라 → (라→ㄹ) → 빈. 이미 확정된 가는 남는다', () => {
+  test('도깨비불 뒤 BS: 가라 에서 마지막 키를 지우면 갈. 단어가 아직 열려 있다', () => {
     const c = make('dubeolsik')
     expect(c.typeAll('rkfk')).toBe('가라')
-    expect(c.backspace().preedit).toBe('f')
+    expect(c.backspace().preedit).toBe('갈')
+    expect(c.backspace().preedit).toBe('가')
+    expect(c.backspace().preedit).toBe('r')
     expect(c.backspace().preedit).toBe('')
-    expect(c.flush()).toBe('')
   })
   test('BS 후 다시 입력하면 이어서 조합: 닭 → BS → 달 → r → 닭', () => {
     const c = make('dubeolsik')
@@ -272,12 +276,46 @@ describe('세벌식 390', () => {
     c.typeAll('ufwx')
     expect([c.backspace().preedit, c.backspace().preedit, c.backspace().preedit]).toEqual(['달', '다', 'u'])
   })
-  test('레이아웃 치환 기호(Emacs·uim 일치, KS 원문 미확인): < → 2, > → 3', () => {
-    expect(s3('<')).toBe('2')
-    expect(s3('mfs<')).toBe('한2')
+  test('기호는 기본으로 친 문자 그대로: < 는 <', () => {
+    expect(s3('<')).toBe('<')
+    expect(s3('mfs<')).toBe('한<')
   })
-  test('passthroughLiterals 옵션이면 기호는 원문 그대로', () => {
-    expect(make('sebeolsik-390', { passthroughLiterals: true }).typeAll('mfs<')).toBe('한<')
+  test('passthroughLiterals:false 면 세벌식 치환 < → 2', () => {
+    expect(make('sebeolsik-390', { passthroughLiterals: false }).typeAll('mfs<')).toBe('한2')
+  })
+})
+
+describe('영어·숫자·특수문자는 한글이 아닌 단어로 남긴다', () => {
+  test('세벌식 hello 는 녀llo 가 아니라 hello', () => {
+    expect(s3('hello')).toBe('hello')
+    expect(sf('hello')).toBe('hello')
+    expect(d('hello')).toBe('hello')
+  })
+  test('how are you 는 세 단어 모두 영어', () => {
+    expect(s3('how are you')).toBe('how are you')
+    expect(d('how are you')).toBe('how are you')
+  })
+  test('물음표·쉼표·느낌표는 친 문자 그대로', () => {
+    expect(s3('hello?')).toBe('hello?')
+    expect(s3('hello,')).toBe('hello,')
+    expect(d('gksrmf!')).toBe('한글!')
+    expect(sf('hello?')).toBe('hello?')
+  })
+  test('숫자만인 단어는 숫자: 390, 123, 3.14', () => {
+    expect(s3('390')).toBe('390')
+    expect(s3('123')).toBe('123')
+    expect(s3('3.14')).toBe('3.14')
+    expect(d('123')).toBe('123')
+  })
+  test('한글 단어와 영어·숫자를 한 문장에 섞는다', () => {
+    expect(s3('mfskgw hello 390')).toBe('한글 hello 390')
+    expect(d('gksrmf hello 123')).toBe('한글 hello 123')
+  })
+  test('단어가 끝날 때 한글과 낱자가 섞여 있으면 키로 되돌린다: hell?', () => {
+    expect(s3('hell?')).toBe('hell?')
+  })
+  test('한 음절로 끝나는 영어는 한글로 남는다: 두벌식 to → 새', () => {
+    expect(d('to')).toBe('새')
   })
 })
 
@@ -339,10 +377,13 @@ describe('세벌식 최종', () => {
     expect(sf('j7')).toBe('예')
     expect(sf('j8')).toBe('의')
   })
-  test('최종에서 숫자는 시프트 위치(Emacs·uim 일치, KS 원문 미확인): J → 1, M → ", mfsJ → 한1', () => {
-    expect(sf('J')).toBe('1')
-    expect(sf('M')).toBe('"')
-    expect(sf('mfsJ')).toBe('한1')
+  test('최종 시프트 기호는 기본으로 친 문자: J 는 J, M 은 M', () => {
+    expect(sf('J')).toBe('J')
+    expect(sf('M')).toBe('M')
+    expect(sf('mfsJ')).toBe('한J')
+  })
+  test('passthroughLiterals:false 면 최종 J → 1', () => {
+    expect(make('sebeolsik-final', { passthroughLiterals: false }).typeAll('mfsJ')).toBe('한1')
   })
   test('390 과 최종의 차이: 같은 키 D 는 390 에서 ㄺ, 최종에서 ㄼ', () => {
     expect(s3('ufD')).toBe('닭')

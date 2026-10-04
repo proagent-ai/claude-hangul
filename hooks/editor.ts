@@ -65,10 +65,9 @@ export class HangulEditor {
     this.shown = ''
   }
 
-  /** 전송 직전. 입력창의 글자는 이미 들어 있으므로 상태만 정리한다. */
+  /** 전송 직전. 열린 단어가 한글이 아니면 친 키로 되돌린다. */
   commitForSubmit(sent: string): string {
-    this.commit()
-    return sent
+    return this.seal(sent)
   }
 
   edit(e: Edit): Answer {
@@ -110,11 +109,7 @@ export class HangulEditor {
     }
 
     const r = this.composer.feed(e.inputText)
-    if (!r.consumed) {
-      // 레이아웃에 없는 키(공백·숫자 등): 조합 글자는 이미 입력창에 있으니 확정만 하고 통과.
-      this.shown = ''
-      return { kind: 'pass' }
-    }
+    if (!r.consumed) return this.passBoundary(e, r.commit)
     if (!composing) this.anchor = e.start
     return this.render(e.text, r.commit, r.preedit)
   }
@@ -131,8 +126,38 @@ export class HangulEditor {
     return { kind: 'box', box: { text: next, cursor, decorations } }
   }
 
+  /** 공백·숫자·특수문자. 열린 단어를 확정(한글이 아니면 원문)한 뒤 그 글자를 넣는다. */
+  private passBoundary(e: Edit, closed: string): Answer {
+    const shift = closed.length - this.shown.length
+    const before = e.text.slice(0, this.anchor)
+    const after = e.text.slice(this.anchor + this.shown.length)
+    this.shown = ''
+    const text = before + closed + after
+    return {
+      kind: 'pass',
+      edit: { ...e, text, start: e.start + shift, end: e.end + shift, cursor: e.cursor + shift },
+    }
+  }
+
+  /** 열린 단어를 sent 안에서 확정한다. 화면의 조합과 확정문이 같으면 글자를 그대로 둔다. */
+  private seal(sent: string): string {
+    const closed = this.composer.flush()
+    if (this.shown === '' || closed === this.shown) {
+      this.shown = ''
+      return sent
+    }
+    const before = sent.slice(0, this.anchor)
+    const after = sent.slice(this.anchor + this.shown.length)
+    this.shown = ''
+    return before + closed + after
+  }
+
   private commitAndPass(e: Edit): Answer {
-    this.commit()
-    return { kind: 'pass', edit: e }
+    const text = this.seal(e.text)
+    const shift = text.length - e.text.length
+    return {
+      kind: 'pass',
+      edit: { ...e, text, start: e.start + shift, end: e.end + shift, cursor: e.cursor + shift },
+    }
   }
 }

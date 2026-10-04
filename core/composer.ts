@@ -14,8 +14,11 @@
 //      - 이미 찬 칸에 같은 역할이 오면, 결합 규칙이 있으면 결합하고 없으면 확정 후 새 음절.
 //      - 초성 겹치기는 중성·종성이 비어 있을 때만. 겹모음은 종성이 없고 앞 모음이 스택의 마지막일 때만(ㅗ→ㅏ).
 //        모음끼리의 순서 무관은 없다. libhangul 도 peek 가 중성일 때만 겹모음을 합친다.
-//  * 백스페이스는 조합 중인 음절 안에서 입력 이전 상태로 되돌린다(자모 단위 해체). 이미 확정된 글자는 건드리지 않는다.
-//  * 초성+중성이 모인 음절만 한글로 낸다. 음절이 아니면 호환 자모 대신 친 키를 그대로 낸다. 숫자만인 덩어리도 키 그대로.
+//  * 한 단어(공백·기호 전까지)가 완성 음절만이면 한글이다. 음절이 아닌 조각이 확정되면
+//    그 단어 전체를 친 키로 되돌린다. 세벌식 hello 는 녀llo 가 아니라 hello.
+//    공백·문장부호로 단어가 끝나면, 한글+낱자가 섞인 채로 두지 않고 키로 되돌린다.
+//  * 숫자만인 단어는 숫자다. 기호(lit)는 기본으로 친 문자 그대로다(passthroughLiterals:false 면 레이아웃 치환).
+//  * 백스페이스는 열린 단어의 마지막 키를 지우고 다시 조합한다.
 //  * 레이아웃에 없는 키(공백, 두벌식 숫자 등)는 consumed=false 로 돌려주고, 조합 중이던 글자는 확정시킨다.
 import { CHO_COMBINE, composeSyllable, isCho, isJong, JONG_COMBINE, JUNG_COMBINE } from './jamo'
 import type { KeyDef } from './keydef'
@@ -142,7 +145,10 @@ export interface FeedResult {
 }
 
 export interface ComposerOptions {
-  /** true 면 레이아웃의 기호/숫자 치환(lit)을 무시하고 원래 문자를 통과시킨다. 기본 false. 슬래시 명령에는 노출하지 않는다. */
+  /**
+   * 레이아웃 기호 치환(lit)을 칠지. 기본 true: `<` `?` 같은 키는 친 문자 그대로.
+   * false 면 세벌식 표의 치환(`<`→`2`, 최종 `?`→`!`)을 적용한다.
+   */
   readonly passthroughLiterals?: boolean
   /**
    * 세벌식에서 빈 초·중·종 칸을 입력 순서와 무관하게 채울지. 기본 true (SPEC 4.2).
@@ -151,9 +157,18 @@ export interface ComposerOptions {
   readonly autoReorder?: boolean
 }
 
+function isHangulRun(text: string): boolean {
+  if (text === '') return true
+  for (const ch of text) {
+    const code = ch.codePointAt(0) ?? 0
+    if (code < 0xac00 || code > 0xd7a3) return false
+  }
+  return true
+}
+
 export class HangulComposer {
-  private syl: Syl = EMPTY
-  private history: Syl[] = []
+  /** 공백·문장부호 전까지의 원문 키. 화면은 이 키를 다시 조합해 만든다. */
+  private wordKeys = ''
 
   constructor(
     private layout: Layout,
@@ -172,31 +187,67 @@ export class HangulComposer {
   }
 
   preedit(): string {
-    return render(this.syl)
+    return this.wordKeys === '' ? '' : this.replay(this.wordKeys, false)
   }
 
   isComposing(): boolean {
-    return !isEmpty(this.syl)
+    return this.wordKeys !== ''
   }
 
-  /** 조합 중인 글자를 확정하고 상태를 비운다. */
+  /** 조합 중인 단어를 확정하고 상태를 비운다. 한글이 아닌 단어는 친 키로 되돌린다. */
   flush(): string {
-    const out = render(this.syl)
-    this.syl = EMPTY
-    this.history = []
+    const out = this.wordKeys === '' ? '' : this.replay(this.wordKeys, true)
+    this.wordKeys = ''
     return out
   }
 
   /** 조합을 버린다(확정하지 않음). */
   reset(): void {
-    this.syl = EMPTY
-    this.history = []
+    this.wordKeys = ''
+  }
+
+  /**
+   * 단어를 다시 조합한다.
+   * closing 이면 단어가 끝난 것. 완성 음절만 아니면 친 키를 돌려준다.
+   */
+  private replay(keys: string, closing: boolean): string {
+    if (/^\d+$/.test(keys)) return keys
+    let syl: Syl = EMPTY
+    let text = ''
+    let latin = false
+    const reorder = this.options.autoReorder !== false
+    for (const ch of keys) {
+      const def = this.layout.map[ch]
+      if (def === undefined || def.role === 'lit') continue
+      const step = this.step(syl, def, ch, reorder)
+      if (step.commit !== '' && !isHangulRun(step.commit)) latin = true
+      if (!latin) text += step.commit
+      syl = step.next
+    }
+    if (latin) return keys
+    const shown = text + render(syl)
+    if (closing && shown !== '' && !isHangulRun(shown)) return keys
+    return shown
+  }
+
+  private step(syl: Syl, def: KeyDef, ch: string, reorder: boolean): Step {
+    if (def.role === 'lit') return { commit: render(syl), next: EMPTY }
+    const jamo = def.jamo
+    if (this.layout.kind === 'dubeol') {
+      if (def.role === 'jung') return dubeolVowel(syl, jamo, ch)
+      if (!isCho(jamo)) return { commit: render(syl), next: EMPTY }
+      return dubeolConsonant(syl, jamo, ch)
+    }
+    if (def.role === 'cho') return sebeolCho(syl, jamo, ch, reorder)
+    if (def.role === 'jung') return sebeolJung(syl, jamo, ch, reorder)
+    return sebeolJong(syl, jamo, ch)
   }
 
   /** 문자 하나(키보드가 만든 ASCII 문자, 시프트 반영)를 넣는다. */
   feed(ch: string): FeedResult {
     const def: KeyDef | undefined = this.layout.map[ch]
-    if (def === undefined || (def.role === 'lit' && this.options.passthroughLiterals === true)) {
+    const passLit = def?.role === 'lit' && this.options.passthroughLiterals !== false
+    if (def === undefined || passLit) {
       const commit = this.flush()
       return { consumed: false, commit, preedit: '' }
     }
@@ -204,32 +255,19 @@ export class HangulComposer {
       const commit = this.flush() + def.text
       return { consumed: true, commit, preedit: '' }
     }
-    const jamo = def.jamo
-    const prev = this.syl
-    let step: Step
-    const reorder = this.options.autoReorder !== false
-    if (this.layout.kind === 'dubeol') {
-      if (def.role === 'jung') step = dubeolVowel(prev, jamo, ch)
-      else if (!isCho(jamo)) step = { commit: this.flush(), next: EMPTY } // 방어: 두벌식 표에 없는 자음
-      else step = dubeolConsonant(prev, jamo, ch)
-    } else if (def.role === 'cho') step = sebeolCho(prev, jamo, ch, reorder)
-    else if (def.role === 'jung') step = sebeolJung(prev, jamo, ch, reorder)
-    else step = sebeolJong(prev, jamo, ch)
-
-    if (step.commit !== '') this.history = [...(step.seed ?? [EMPTY])]
-    else this.history.push(prev)
-    this.syl = step.next
-    return { consumed: true, commit: step.commit, preedit: render(this.syl) }
+    this.wordKeys += ch
+    // commit 은 비운다. 단어 전체가 preedit 이라, 녀llo 처럼 섞이면 앞의 녀 까지 원문으로 바꿀 수 있다.
+    return { consumed: true, commit: '', preedit: this.replay(this.wordKeys, false) }
   }
 
   /**
-   * 백스페이스. 조합 중인 글자가 있으면 한 자모 되돌리고 consumed=true.
-   * 조합 중인 글자가 없으면 consumed=false (호출자가 편집기에 그대로 넘긴다).
+   * 백스페이스. 열린 단어가 있으면 마지막 키를 지우고 consumed=true.
+   * 단어가 없으면 consumed=false (호출자가 편집기에 그대로 넘긴다).
    */
   backspace(): { consumed: boolean; preedit: string } {
-    if (isEmpty(this.syl)) return { consumed: false, preedit: '' }
-    this.syl = this.history.pop() ?? EMPTY
-    return { consumed: true, preedit: render(this.syl) }
+    if (this.wordKeys === '') return { consumed: false, preedit: '' }
+    this.wordKeys = this.wordKeys.slice(0, -1)
+    return { consumed: true, preedit: this.preedit() }
   }
 
   /** 편의 함수: 문자열을 한 키씩 넣고 (확정 + 조합중) 전체를 돌려준다. 테스트·디버깅용. */

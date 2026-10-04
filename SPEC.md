@@ -45,16 +45,17 @@ package.json / tsconfig.json / .gitignore / README.md
 ```
 
 ### 테스트 현황 (2026-10-04, 샌드박스 claude CLI 2.1.289. 통과 수는 PR/아래 명령을 본다)
-- `bun run test` → core 91 통과 / 0 실패.
-- `claude plugin test .` → **111 통과 / 0 실패** (core 91 + 어댑터 16 + register 4).
+- `bun run test` → core 106 통과 / 0 실패.
+- `claude plugin test .` → **135 통과 / 0 실패**.
 - `claude plugin validate .claude-plugin/plugin.json` → 통과.
 - `tsc` 타입체크: **미수행**(§6 참고).
 
 ### 코어 규칙 요약 (구현 완료·테스트됨)
 - 두벌식: 자음은 문맥으로 초/종성 결정, 도깨비불(받침→다음 모음 초성; 겹받침은 뒤 자모만; 직접 친 시프트 ㄲ/ㅆ 받침은 통째로 이동), 겹받침 11종 + ㄱㄱ→ㄲ, ㅅㅅ→ㅆ, 겹모음 7종, 시프트 쌍자음, ㄸㅃㅉ는 받침 불가.
 - 세벌식: 키가 초/중/종 고정, 도깨비불 없음. 한 음절 안에서 초·중·종 **입력 순서 무관**(빈 칸에 채움, 찬 칸에 같은 역할이 오면 결합 규칙 없을 때 확정 후 새 음절). 초성 겹치기는 중·종성이 비었을 때만, 겹모음은 종성이 비었고 앞 모음이 먼저일 때만, 겹받침은 받침 키 두 개로도 직접 키로도 가능.
-- 백스페이스: 조합 중인 음절 안에서 입력 이전 상태로 되돌림(자모 단위). 확정된 글자는 코어가 건드리지 않음(`consumed:false` 반환 → 편집기가 지움). 도깨비불로 확정된 앞 글자는 복원하지 않음.
-- 레이아웃에 없는 키(공백, 두벌식 숫자 등)는 `consumed:false` + 조합 확정. 레이아웃이 정의한 기호 치환(`lit`)은 기본 적용, `passthroughLiterals` 옵션으로 해제.
+- 단어(공백·기호 전)가 완성 음절만이면 한글. 음절이 아닌 조각이 확정되거나, 단어가 끝날 때 한글과 낱자가 섞이면 그 단어 전체를 친 키로 되돌린다. 세벌식 `hello` 는 `hello`, `390` 같은 숫자 단어는 숫자, 표에 없는 기호는 친 문자. 한 음절로 끝나는 영어(`to`→`새`)는 한글으로 남는다.
+- 백스페이스: 아직 끝나지 않은 단어에서 마지막 키를 지우고 다시 조합한다. 단어가 없으면 `consumed:false`.
+- 레이아웃에 없는 키(공백 등)는 `consumed:false` + 단어 확정. 기호 치환(`lit`)은 기본으로 끄고 친 문자를 낸다. `passthroughLiterals: false` 면 세벌식 표의 치환을 적용한다.
 
 ### 미검증 hooks
 `hooks/register.tsx`, `hooks/editor.ts`의 **모든 Claude Code API 사용**이 미검증이다. 근거는 claude-vime 소스(README 기준 Claude Code 2.1.288)뿐이며 실제 세션에서 로드해 본 적이 없다. 박스 CLI는 2.1.278이라 버전도 다르다. `claude plugin test`/`validate` 통과는 "정적 검사 + 모의 엔진 테스트 통과"일 뿐 실동작 증거가 아니다.
@@ -107,7 +108,7 @@ package.json / tsconfig.json / .gitignore / README.md
 1. 두벌식 **도깨비불**: `rkf`+`k` → `가라`; 겹받침은 뒤 자모만 이동(`닭`+`ㅣ` → `달기`); 쌍받침 ㄱㄱ은 분리(`낚`+`ㅣ` → `낙기`).
 2. **겹받침** 11종(ㄳ ㄵ ㄶ ㄺ ㄻ ㄼ ㄽ ㄾ ㄿ ㅀ ㅄ) 및 쌍받침(ㄲ ㅆ). 두벌식은 자음 연타, 세벌식은 받침 키 연타 또는 전용 키.
 3. **겹모음** 7종(ㅘ ㅙ ㅚ ㅝ ㅞ ㅟ ㅢ), 앞 모음 먼저. 받침이 있으면 결합하지 않음.
-4. **자모 단위 백스페이스**: `글→그→ㄱ→(빈)`, `닭→달→다→ㄷ`, `와→오→ㅇ`. 조합이 없으면 편집기에 넘김(`consumed:false`).
+4. **열린 단어 백스페이스**: 공백·기호 전의 단어에서 마지막 키를 지우고 다시 조합한다. `글→그→r→(빈)`, `닭→달→다→e`. 단어가 없으면 편집기에 넘김(`consumed:false`).
 5. **세벌식 순서 무관 조합**: 기본(`autoReorder` true, `HANGUL_SEBEOL_ORDER` 미설정)은 한 음절 안에서 초·중·종 6가지 순서가 모두 같은 글자. libhangul `option_auto_reorder=true` 와 같고, libhangul 기본값(false, `hangul_ic_new`)과는 다르다. `autoReorder: false` / `HANGUL_SEBEOL_ORDER=strict` 이면 역순은 확정한다. 겹모음은 종성이 없고 앞 모음이 먼저일 때만(libhangul 도 peek 가 중성일 때만 결합). macOS/Windows IME 실기 대조는 안 했다.
 6. 확정 규칙: 공백·레이아웃에 없는 키·ctrl/meta 키·붙여넣기·커서 이동은 조합 확정 후 통과.
 
@@ -134,7 +135,7 @@ package.json / tsconfig.json / .gitignore / README.md
 | 선택영역 치환 | 확정 후 원문 통과 | 어댑터 테스트만. 세션에서 선택영역 이벤트는 안 잡음 |
 | 외부 변경 | 조합 구간 텍스트가 달라지면 조합 폐기 | vim `x` 로 확인 (위) |
 | ctrl/meta 조합 | 확정 후 통과 | **ctrl 확인됨.** `ctrl+u` 가 `{key:"u",ctrl:true}`, `inputText:""`, `start:0`, `end` 는 줄 전체. meta 는 세션에서 안 보냄 |
-| 세벌식 숫자·기호 치환 | 표대로 적용(예: 390 `<`→`2`, 최종 `J`→`1`). libhangul·Emacs·uim 일치. KS/문화원 원문은 미확인. 최종 세로막대 키만 uim 이 `₩`(표는 백슬래시). `passthroughLiterals` 는 코드 옵션만, 명령에는 없음 | 명령 노출 안 함으로 결정 |
+| 세벌식 숫자·기호 | 기호(`lit`)는 기본으로 친 문자. `passthroughLiterals: false` 면 표 치환(390 `<`→`2`, 최종 `J`→`1`). 숫자만인 단어는 숫자. KS/문화원 원문은 미확인 | 명령 노출 안 함 |
 | Caps Lock | 대문자로 들어오면 두벌식은 소문자와 같고 세벌식은 시프트 키로 해석 | Shift+G 는 **확인됨**: `{key:"G",shift:true}`, `inputText:"G"`, 세벌식 최종에서 `ㅒ`. Caps Lock 키 자체는 **실측 불가** (주입 못 함) |
 | 비동기 대기 중 키 | 코어가 동기라 vime식 `raw` 복구 불필요하다고 가정 | **미검증** |
 
