@@ -25,6 +25,14 @@ const isHangulCommand = (head: string) => /^\/hangul(?:\s+\S*)?$/.test(head)
 /** 조합기에 넘길 단일 인쇄 가능 ASCII 문자. 공백은 레이아웃에 없으므로 통과 키가 된다. */
 const SINGLE_KEY = /^[\x20-\x7e]$/
 
+/**
+ * key 없이 여러 글자가 한 편집으로 온 것 중 키 묶음으로 보는 것. 원격(SSH 등)에서는 지연 때문에
+ * 연달아 친 키가 한 편집으로 접혀 오고, API 로는 붙여넣기와 구별되지 않는다.
+ * 줄바꿈 없는 인쇄 가능 ASCII 이고 BURST_MAX 글자 이하면 한 글자씩 친 것으로 본다. 더 길면 붙여넣기.
+ */
+const BURST_MAX = 8
+const BURST = new RegExp(`^[\\x20-\\x7e]{2,${BURST_MAX}}$`)
+
 export class HangulEditor {
   private on = false
   /** 입력창 안에서 조합 중인 글자의 시작 위치. */
@@ -93,6 +101,8 @@ export class HangulEditor {
       return this.commitAndPass(e)
     }
 
+    if (e.key === undefined && e.start === e.end && BURST.test(e.inputText)) return this.burst(e)
+
     // 한 글자 입력만 조합 대상. 붙여넣기·여러 글자·선택영역 치환은 확정 후 원문 그대로 통과.
     const isSingle = e.start === e.end && SINGLE_KEY.test(e.inputText)
     if (!isSingle) return this.commitAndPass(e)
@@ -112,6 +122,26 @@ export class HangulEditor {
     if (!r.consumed) return this.passBoundary(e, r.commit)
     if (!composing) this.anchor = e.start
     return this.render(e.text, r.commit, r.preedit)
+  }
+
+  /** 키 묶음을 한 글자씩 친 것처럼 처리하고, 그 결과 입력창을 한 번에 돌려준다. */
+  private burst(e: Edit): Answer {
+    let text = e.text
+    let cursor = e.start
+    let decorations: Decoration[] = []
+    for (const ch of e.inputText) {
+      const one: Edit = { text, cursor, start: cursor, end: cursor, inputText: ch }
+      const answer = this.edit(one)
+      if (answer.kind === 'box') {
+        ;({ text, cursor, decorations } = answer.box)
+      } else {
+        const applied = answer.edit ?? one
+        text = applied.text.slice(0, applied.start) + applied.inputText + applied.text.slice(applied.end)
+        cursor = applied.start + applied.inputText.length
+        decorations = []
+      }
+    }
+    return { kind: 'box', box: { text, cursor, decorations } }
   }
 
   /** 조합 구간을 (commit + preedit) 으로 바꾼 입력창을 돌려준다. */

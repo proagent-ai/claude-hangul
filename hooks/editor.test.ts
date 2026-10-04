@@ -147,12 +147,34 @@ describe('HangulEditor (prompt.edit 어댑터)', () => {
     expect(b.text).toBe('와')
   })
 
-  test('붙여넣기(여러 글자·키 없음)는 변환하지 않고 확정 후 원문 그대로', () => {
+  test('붙여넣기(9글자 이상·키 없음)는 변환하지 않고 확정 후 원문 그대로', () => {
     const b = newBox()
     b.type('gks')
-    b.paste('hello')
-    expect(b.text).toBe('한hello')
+    b.paste('hello world')
+    expect(b.text).toBe('한hello world')
     expect(b.decorations).toEqual([])
+  })
+
+  test('원격 지연으로 접혀 온 키 묶음(8글자 이하·키 없음)은 한 글자씩 친 것처럼 조합', () => {
+    const b = newBox('sebeolsik-390')
+    b.type('m')
+    b.paste('fsk')
+    b.type('g')
+    b.paste('w ')
+    expect(b.text).toBe('한글 ')
+    const d = newBox()
+    d.paste('dkssud')
+    expect(d.text).toBe('안녕')
+    expect(d.decorations).toEqual([{ start: 0, end: 2, underline: true }])
+    d.type('?')
+    expect(d.text).toBe('안녕?')
+  })
+
+  test('키 묶음 안의 /hangul 인자는 영어 그대로', () => {
+    const b = newBox()
+    b.paste('/hangul ')
+    b.paste('off')
+    expect(b.text).toBe('/hangul off')
   })
 
   test('ctrl 조합은 조합 글자를 확정하고 통과', () => {

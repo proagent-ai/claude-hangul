@@ -126,7 +126,7 @@ package.json / tsconfig.json / .gitignore / README.md
 
 | 항목 | 현재 처리 | 상태 |
 |---|---|---|
-| **붙여넣기**(여러 글자, `key` 없음) | 변환 없이 조합 확정 후 원문 그대로 | **확인됨.** bracketed paste `hello` → `key: null`, `inputText: "hello"`. 화면 `한그hello` |
+| **붙여넣기**(여러 글자, `key` 없음) | 줄바꿈 없는 인쇄 가능 ASCII 8글자 이하는 키 묶음으로 보고 한 글자씩 조합. 그보다 길거나 줄바꿈이 있으면 조합 확정 후 원문 그대로 | 9글자 이상은 **확인됨.** bracketed paste `hello` → `key: null`, `inputText: "hello"`. 묶음 처리는 원격(Android 태블릿 → Orca → Mac) 에서 조합이 깨진 보고로 넣었다. API 는 키 묶음과 붙여넣기를 구별하지 않는다. 원격 실측은 **미검증** |
 | **vim 모드** | Esc·노멀 모드 키는 `prompt.edit` 에 안 온다. 다음 입력 키의 `text` 가 조합 중인 글자와 다르면 조합을 버린다 | **확인됨** (아래 §11). `x` 가 음절을 지운 뒤 `k` → `ㅏ` |
 | **Enter 확정** | `prompt.edit` 에 `return` 이 없고 `prompt.submit` 의 `text` 로 전송. 훅은 텍스트를 유지하고 조합 상태만 정리 | **확인됨.** `한` 전송 시 `prompt.submit {"text":"한"}`. `return` 키 이벤트는 로그에 없음. 모델 호출은 무효 키로 401 |
 | **한영 키 도달** | 설계상 의존하지 않음(`/hangul` 토글) | **실측 불가.** tmux `Hangul` / `Hangul_Hanja` 는 그 문자열이 붙여넣기처럼 들어갔고(`key: null`), 한영 키 이벤트는 만들지 못했다. Caps Lock 키도 넣지 못했다 |
