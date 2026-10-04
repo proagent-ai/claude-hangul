@@ -111,11 +111,12 @@ package.json / tsconfig.json / .gitignore / README.md
 5. **세벌식 순서 무관 조합**: 기본(`autoReorder` true, `HANGUL_SEBEOL_ORDER` 미설정)은 한 음절 안에서 초·중·종 6가지 순서가 모두 같은 글자. libhangul `option_auto_reorder=true` 와 같고, libhangul 기본값(false, `hangul_ic_new`)과는 다르다. `autoReorder: false` / `HANGUL_SEBEOL_ORDER=strict` 이면 역순은 확정한다. 겹모음은 종성이 없고 앞 모음이 먼저일 때만(libhangul 도 peek 가 중성일 때만 결합). macOS/Windows IME 실기 대조는 안 했다.
 6. 확정 규칙: 공백·레이아웃에 없는 키·ctrl/meta 키·붙여넣기·커서 이동은 조합 확정 후 통과.
 
-### 4.3 mod 껍데기 (**전부 미검증**)
+### 4.3 mod 껍데기
 - `/hangul` 토글, `/hangul on|off`, `/hangul 2|390|final`(선택 즉시 켬). `/한글` 은 쓰지 않는다. 2.1.289 명령 이름은 `^[a-zA-Z0-9_-]{1,64}$` 라 한글 이름은 등록되지 않았다(세션 로그에 `/hangul listed` 만 있고 `/한글` 은 없음).
 - 시작 레이아웃: 환경변수 `HANGUL_LAYOUT=2|390|final` (기본 두벌식). `HANGUL_SEBEOL_ORDER=strict` 이면 세벌식 `autoReorder` 를 끈다(기본은 순서 무관). `$.store` 는 타입에 있으나 레이아웃 기억에는 쓰지 않는다. 세션 간 저장 실측은 안 했다.
 - `command.run` 의 인자 필드명은 생성 타입 `CommandRunInput.args: string` 이다. 캐스트는 제거했다.
-- 상태줄: 켜짐 `한 두벌식` / `한 세벌식 390` / `한 세벌식 최종`, 꺼짐 `undefined`(지움), reload 직후에도 지움. 표시 형식·길이 적합성 **미검증**.
+- 상태줄에 넣는 문자열: 켜짐 `한 두벌식` / `한 세벌식 390` / `한 세벌식 최종`, 꺼짐 `undefined`. 2.1.289 화면에는 엔진이 `⚠ hangul: ` 을 앞에 붙여 `⚠ hangul: 한 두벌식` 처럼 보인다. 이 세 문자열은 그 세션 폭에서 한 줄에 들어갔다. 더 좁은 폭은 안 재었다. 영문 이중 표기는 넣지 않는다.
+- 명령 반환 텍스트는 `on (두벌식)` / `off` 만 둔다. 엔진이 `hangul: ` 을 붙인다. `hangul:` 을 또 넣으면 화면이 `hangul: hangul: on` 이 됐다.
 - 끄면 조합 중인 글자는 입력창에 확정된 채 남음.
 
 ---
@@ -124,31 +125,31 @@ package.json / tsconfig.json / .gitignore / README.md
 
 | 항목 | 현재 처리 | 상태 |
 |---|---|---|
-| **붙여넣기**(여러 글자, `key` 없음) | 변환 없이 조합 확정 후 원문 그대로 | 실제 이벤트 모양 **미검증** |
-| **vim 모드** | Esc는 mod에 안 닿음(README). 노멀 모드에서 입력창 텍스트가 바뀌면 조합 구간 불일치로 조합 폐기 | 실동작 **미검증** |
-| **Enter 확정** | 일반 Enter는 `prompt.edit`에 안 오고 전송됨 → `prompt.submit`에서 조합 상태 정리(텍스트는 이미 입력창에 있음) | **미검증** |
-| **한영 키 도달** | 설계상 의존하지 않음(`/hangul` 토글). 한/영·Caps Lock·Globe 키가 `prompt.edit`/`key`로 오는지 **미확인** | 실측 필요 |
-| **세벌식 `/`** | 세벌식에서 `/`=ㅗ. 입력창 맨 앞 `/\S*` 구간(슬래시 명령 이름 입력 중)은 변환 없이 통과, 명령 이름 뒤 공백부터 다시 한글. 문장 중간 `/`는 ㅗ | 어댑터 테스트 통과, 실세션 **미검증** |
-| 커서가 조합 구간 밖 | 기존 조합 확정, 해당 키는 새 조합 시작 | 모의 테스트만 |
-| 선택영역 치환 | 확정 후 원문 통과 | **미검증** |
-| 외부 변경 | 조합 구간 텍스트가 달라지면 조합 폐기 | 모의 테스트만 |
-| ctrl/meta 조합 | 확정 후 통과 | **미검증** |
+| **붙여넣기**(여러 글자, `key` 없음) | 변환 없이 조합 확정 후 원문 그대로 | **확인됨.** bracketed paste `hello` → `key: null`, `inputText: "hello"`. 화면 `한그hello` |
+| **vim 모드** | Esc·노멀 모드 키는 `prompt.edit` 에 안 온다. 다음 입력 키의 `text` 가 조합 중인 글자와 다르면 조합을 버린다 | **확인됨** (아래 §11). `x` 가 음절을 지운 뒤 `k` → `ㅏ` |
+| **Enter 확정** | `prompt.edit` 에 `return` 이 없고 `prompt.submit` 의 `text` 로 전송. 훅은 텍스트를 유지하고 조합 상태만 정리 | **확인됨.** `한` 전송 시 `prompt.submit {"text":"한"}`. `return` 키 이벤트는 로그에 없음. 모델 호출은 무효 키로 401 |
+| **한영 키 도달** | 설계상 의존하지 않음(`/hangul` 토글) | **실측 불가.** tmux `Hangul` / `Hangul_Hanja` 는 그 문자열이 붙여넣기처럼 들어갔고(`key: null`), 한영 키 이벤트는 만들지 못했다. Caps Lock 키도 넣지 못했다 |
+| **세벌식 `/`** | 맨 앞 `/\S*` 는 통과, 문장 중간 `/` 는 ㅗ | **확인됨.** 최종에서 `j/f` → `와`. 빈 칸의 `/ab` 는 `/ab` |
+| 커서가 조합 구간 밖 | 기존 조합 확정, 해당 키는 새 조합 시작 | 모의 테스트만. 세션에서 커서 이동은 안 함 |
+| 선택영역 치환 | 확정 후 원문 통과 | 어댑터 테스트만. 세션에서 선택영역 이벤트는 안 잡음 |
+| 외부 변경 | 조합 구간 텍스트가 달라지면 조합 폐기 | vim `x` 로 확인 (위) |
+| ctrl/meta 조합 | 확정 후 통과 | **ctrl 확인됨.** `ctrl+u` 가 `{key:"u",ctrl:true}`, `inputText:""`, `start:0`, `end` 는 줄 전체. meta 는 세션에서 안 보냄 |
 | 세벌식 숫자·기호 치환 | 표대로 적용(예: 390 `<`→`2`, 최종 `J`→`1`). libhangul·Emacs·uim 일치. KS/문화원 원문은 미확인. 최종 세로막대 키만 uim 이 `₩`(표는 백슬래시). `passthroughLiterals` 는 코드 옵션만, 명령에는 없음 | 명령 노출 안 함으로 결정 |
-| Caps Lock | 대문자로 들어오면 두벌식은 소문자와 같고 세벌식은 시프트 키로 해석 | **미검증** |
+| Caps Lock | 대문자로 들어오면 두벌식은 소문자와 같고 세벌식은 시프트 키로 해석 | Shift+G 는 **확인됨**: `{key:"G",shift:true}`, `inputText:"G"`, 세벌식 최종에서 `ㅒ`. Caps Lock 키 자체는 **실측 불가** (주입 못 함) |
 | 비동기 대기 중 키 | 코어가 동기라 vime식 `raw` 복구 불필요하다고 가정 | **미검증** |
 
 ---
 
-## 6. 남은 작업 (우선순위 순)
+## 6. 남은 작업 처리 (2026-10-04)
 
-1. **실세션 로드 및 로그 확인** (최우선): Claude Code ≥ 2.1.288 환경(Cloud 에이전트 샌드박스에서 가능한 범위)에서 `claude --plugin-dir .`로 로드. `prompt.edit`에 들어오는 `{inputText,key,start,end}`를 로그로 남겨 §3·§5의 가정(키 이름, 붙여넣기 모양, backspace의 start/end, Enter, 한영/Caps 키)을 실측 후 SPEC 갱신. 실제 터미널 상호작용이 불가능하면 불가능했다고 명시하고 '미검증'으로 남길 것.
-2. **tsc 타입체크**: 로드 시 생성되는 `.claude-plugin/types/tsconfig.json`을 확보한 뒤 `npx -p typescript@5.9.3 tsc -p .` 통과시키기. (vime CI는 `claude --plugin-dir . -p x` 를 무효 API 키로 실행해 타입만 생성시킴 — 우리도 실제 모델 호출·과금 없이 하는 방법만 사용.) `register.tsx`의 `(e as {args?:string})` 같은 우회 캐스트를 실제 타입으로 교체.
-3. **매핑 공식 도표 대조**: libhangul 단일 출처 → KS X 5002(두벌식), 공병우 세벌식 390/최종 공식 배열도(공신력 있는 두 번째 출처)와 키별 대조. 불일치·미확인 행 정리하고 `core/layout-data.ts` 머리말/행 주석 갱신(생성 파일이므로 `tools/gen-layout.mjs` 수정). 특히 시프트·기호·숫자 행.
-4. **실제 IME와 도깨비불 대조**: macOS/Windows 두벌식·세벌식 IME(또는 libhangul 동작)와 비교해 다음을 확정: 시프트 ㅆ/ㄲ 받침 + 모음(`았`+ㅏ), 쌍받침 ㄱㄱ 분리, 겹받침 분리 후 백스페이스 복원 여부, 세벌식 겹모음 순서 무관 여부. 결정을 테스트 이름에 "근거" 포함해 반영.
-5. **상태줄**: `$.ui.status` 실표시 확인(길이, 한글 폭), reload 시 잔상 없음, 꺼짐 시 지움. 영문/한글 이중 표기 필요 여부 결정.
-6. 명령 이름: `/한글` 허용 여부 실측. 불가하면 별칭 제거하고 README·SPEC 수정. `command.run`의 `args` 실제 필드명 확인(미확인이면 대안: 명령 3개 분리 등록).
-7. 설정: 레이아웃 기억(환경변수 외 방법)이 필요한지 결정 — 필요하면 플러그인이 쓸 수 있는 설정 저장 API가 있는지부터 조사. 없으면 환경변수 유지.
-8. 마무리: README를 실측 결과로 갱신, 미검증 표기 제거/유지 정리.
+1. 실세션 로드와 `prompt.edit` 페이로드: §11. 한영 키만 실측 불가.
+2. `tsc -p .` (typescript 5.9.3) 오류 0. `e.args` 캐스트 제거. `layouts.ts` 의 중복 `세벌식390` 제거.
+3. 키 대조: libhangul + Emacs `hangul.el` + uim `byeoru.scm`. 자모 불일치 0. KS X 5002·한글문화원 원문 도표는 **미확인**. 최종 `|` 만 uim `₩`.
+4. 도깨비불은 libhangul `hangul_ic_process_jamo` / `hangul_jongseong_get_diff` 와 같게 유지. macOS·Windows IME 실기는 안 했다. 세벌식 순서 무관은 기본값(`autoReorder` true). libhangul 기본은 false. `HANGUL_SEBEOL_ORDER=strict` 로 끈다.
+5. 상태줄: §4.3. 영문 이중 표기 없음. reload 직후 잔상은 이 세션에서 플러그인 리로드를 하지 않아 **미검증**.
+6. `/한글` 제거. `args` 는 `CommandRunInput.args`.
+7. 레이아웃 기억은 환경변수만. `$.store` 는 타입에 있으나 세션 간 저장은 실측하지 않아 쓰지 않는다.
+8. README 를 이 실측으로 고쳤다.
 
 ---
 
@@ -163,14 +164,40 @@ npx -p typescript@5.9.3 tsc -p .               # 타입 생성 후
 ```
 
 ### 완료 기준 (모두 충족)
-- [ ] `claude plugin test .` 전부 통과, 테스트 수가 111개 미만으로 줄지 않음(기존 규칙 회귀 금지).
-- [ ] `claude plugin validate` 통과, `tsc -p .` 오류 0.
-- [ ] §6-3 매핑 대조 완료: 3개 레이아웃의 모든 `cho/jung/jong` 키가 두 출처 이상으로 확인되었거나, 불일치 키가 목록으로 문서화됨.
-- [ ] §6-4 도깨비불·백스페이스 규칙이 실제 IME 또는 libhangul 동작과 대조되어 결정 근거가 테스트/SPEC에 기록됨.
-- [ ] 실세션 로그로 §5의 "한영 키 도달", "붙여넣기", "vim 모드", "Enter" 항목이 각각 '확인됨' 또는 '실측 불가(사유)'로 바뀜.
-- [ ] 두벌식 `gksrmf`→`한글`, 세벌식 390 `mfskgw`→`한글`, 세벌식 최종 `mfskgw`→`한글`이 **실제 Claude Code 입력창**에서 재현(가능한 환경이면). 불가하면 불가 사유를 보고서에 기재.
-- [ ] 미검증 항목이 남으면 코드(`TODO`)·README·SPEC 모두에 '미검증'으로 일관되게 표시.
-- [ ] 기대값을 규칙/표에서 도출하지 못한 테스트를 추가하지 않음(근거 없는 값 금지).
+- [x] `claude plugin test .` 123 pass / 0 fail (2.1.289). 111개 미만으로 줄지 않음.
+- [x] `claude plugin validate` 통과, `tsc -p .` (typescript 5.9.3) 오류 0.
+- [x] 자모 키는 libhangul·Emacs·uim 세 출처 일치. 불일치 1키(세벌식 최종 `|`, uim 만 `₩`)를 `layout-data.ts` 에 적음. KS/문화원 원문은 미확인.
+- [x] 도깨비불·백스페이스 근거를 libhangul 소스와 테스트 이름에 적음. OS IME 실기는 안 했다.
+- [x] §5 의 한영 키(실측 불가), 붙여넣기(확인됨), vim(확인됨), Enter(확인됨).
+- [x] 입력창 재현: 두벌식 `gksrmf`→`한글`, 세벌식 390 `mfskgw`→`한글`, 세벌식 최종 `mfskgw`→`한글`.
+- [x] 남은 미검증(한영 키, Caps Lock 키, 선택영역, 밑줄의 화면 표시, 상태줄 reload 잔상, `$.store`)은 코드 TODO·README·이 문서에 적었다.
+- [x] 추가 테스트의 기대값은 키 표·libhangul 분기·어댑터 규칙에서 나왔다.
+
+## 11. 실측 기록 (2026-10-04, CLI 2.1.289)
+
+격리된 `HOME`(`/tmp/claude-tty4`)에서 `HANGUL_TRACE=1 claude --plugin-dir .`. 사용자 `~/.claude` 는 건드리지 않았다. API 키는 무효 값이라 전송은 401 이었다.
+
+`prompt.edit` 한 글자 (두벌식, 직전 초안이 빈 칸):
+
+```json
+{"key":{"key":"g"},"inputText":"g","start":0,"end":0,"cursor":0,"text":""}
+```
+
+이어서 `k` 의 `text` 는 `ㅎ`, `s` 는 `하`, `r` 은 `한`. 화면은 `한글`. 세벌식 390·최종의 `mfskgw` 도 화면이 `한글` 이었다.
+
+백스페이스: `{"key":{"key":"backspace"},"inputText":"","start":1,"end":2,"cursor":2,"text":"한글"}` → 화면 `한그`.
+
+붙여넣기: `{"key":null,"inputText":"hello","start":2,"end":2,"cursor":2,"text":"한그"}` → `한그hello`.
+
+`ctrl+u`: `{"key":{"key":"u","ctrl":true},"inputText":"","start":0,"end":7,"cursor":7,"text":"한그hello"}`.
+
+Enter: `prompt.edit` 에 `return` 없음. `prompt.submit {"text":"한"}`. 이어서 `API key is invalid` 401.
+
+vim (`settings.json` `editorMode` 를 격리 홈에만 `"vim"`): insert 에서 `gks`→`한`. Esc 와 노멀 `x` 는 `[hangul]` 로그가 없다. `x` 로 칸이 빈 뒤 insert `k` 는 `text:""` 로 들어와 `ㅏ`.
+
+한영 키: tmux 키 이름 `Hangul` 은 `inputText:"Hangul"`, `key:null` 이었다. 한영 전환 이벤트는 **못 만들었다.**
+
+밑줄 decoration 이 터미널 속성에 보이는지는 이 캡처에서 확인하지 못했다. **미검증.**
 
 ---
 
@@ -202,7 +229,7 @@ npx -p typescript@5.9.3 tsc -p .               # 타입 생성 후
 
 ## 10. 인계 시 참고 사실
 
-- 박스의 claude CLI는 `2.1.278`, vime README 기준은 `2.1.288`. 이 차이로 vime 자체 테스트가 120개 중 4개 실패(`update($, …)` 교차 import 오류)하는 것을 확인함 → 버전 의존성 주의.
+- 이 샌드박스의 claude CLI 는 `2.1.289`. 예전 박스의 `2.1.278` 은 mods 가 없어 로드가 실패했다.
 - `claude plugin test`는 `core/*.test.ts`도 수집하므로 테스트 파일은 `claude-code/testing`에서만 import할 것(`bun:test` import 금지).
 - `core/layout-data.ts`는 생성 파일. 직접 수정하지 말고 `tools/gen-layout.mjs`를 고쳐 재생성(libhangul 클론 경로는 인자). 현재 박스의 클론은 `/workspace/ref/libhangul` (인계 시 포함되지 않을 수 있음 — 필요하면 재클론).
-- 현재 `git`은 `init`만 되어 있고 커밋이 없다.
+- 작업 브랜치는 `cursor/hangul-session-verify-4c99`. main 에 직접 푸시하지 않는다.

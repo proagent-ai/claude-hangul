@@ -2,7 +2,8 @@
 // Claude Code API에 대한 "런타임 의존"은 없다(타입 모양만 claude-vime 의 hooks/editor.ts 를 따라 로컬 정의).
 //
 // Edit 필드는 Claude Code 2.1.289 생성 타입 PromptEditInput 의 부분집합이다.
-// 실제 세션에서 키가 이 모양으로 오는지는 SPEC 의 실측 기록을 본다. 한영 키는 이 어댑터가 보지 않는다.
+// 2026-10-04 세션에서 한 글자 키는 {key, inputText, start, end, cursor, text} 로 왔다.
+// TODO [미검증]: 한영·Caps Lock·Globe 키. 그 세션의 tmux 로는 한영 키 이벤트를 넣지 못했다.
 import { HangulComposer } from '../core/composer'
 import type { Layout } from '../core/layouts'
 

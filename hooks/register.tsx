@@ -22,8 +22,9 @@ function applyHangul(ed: HangulEditor, argRaw: string): { text: string; touchSta
   else if (layout !== undefined) {
     ed.setLayout(layout)
     ed.setOn(true)
-  } else return { text: `hangul: unknown argument "${arg}" (on | off | 2 | 390 | final)`, touchStatus: false }
-  return { text: ed.isOn ? `hangul: on (${ed.layout.name})` : 'hangul: off', touchStatus: true }
+  } else return { text: `unknown argument "${arg}" (on | off | 2 | 390 | final)`, touchStatus: false }
+  // 화면에는 엔진이 `hangul: ` 을 앞에 붙인다. 여기서 또 붙이면 `hangul: hangul: on` 이 된다.
+  return { text: ed.isOn ? `on (${ed.layout.name})` : 'off', touchStatus: true }
 }
 
 function editOf(e: PromptEditInput): Edit {
@@ -49,7 +50,7 @@ export const register: Register = on => {
   })
 
   on('command.run', { command: 'hangul' }, async ($, e) => {
-    if (editor === undefined) return { text: 'hangul: not ready yet' }
+    if (editor === undefined) return { text: 'not ready yet' }
     const answer = applyHangul(editor, e.args)
     if (answer.touchStatus) $.ui.status(editor.status())
     return { text: answer.text }

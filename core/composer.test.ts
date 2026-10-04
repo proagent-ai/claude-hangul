@@ -264,7 +264,7 @@ describe('세벌식 390', () => {
     c.typeAll('ufwx')
     expect([c.backspace().preedit, c.backspace().preedit, c.backspace().preedit]).toEqual(['달', '다', 'ㄷ'])
   })
-  test('레이아웃 치환 기호(미확인 표): < → 2, > → 3', () => {
+  test('레이아웃 치환 기호(Emacs·uim 일치, KS 원문 미확인): < → 2, > → 3', () => {
     expect(s3('<')).toBe('2')
     expect(s3('mfs<')).toBe('한2')
   })
@@ -331,7 +331,7 @@ describe('세벌식 최종', () => {
     expect(sf('j7')).toBe('예')
     expect(sf('j8')).toBe('의')
   })
-  test('최종에서 숫자는 시프트 위치(미확인 표): J → 1, M → ", mfsJ → 한1', () => {
+  test('최종에서 숫자는 시프트 위치(Emacs·uim 일치, KS 원문 미확인): J → 1, M → ", mfsJ → 한1', () => {
     expect(sf('J')).toBe('1')
     expect(sf('M')).toBe('"')
     expect(sf('mfsJ')).toBe('한1')

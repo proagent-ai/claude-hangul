@@ -14,16 +14,18 @@ Claude Code 프롬프트 입력창에서 OS IME 없이 한글을 직접 조합�
 
 ## 사용
 `/hangul` 토글, `/hangul on|off`, `/hangul 2|390|final`(선택하면 켜짐).
+화면의 명령 결과는 `hangul: on (두벌식)` 처럼 보인다. 훅이 돌려주는 문자열은 `on (두벌식)` / `off` 이고, `hangul:` 은 엔진이 붙인다.
 명령 이름은 영문만 된다. `/한글` 은 Claude Code 가 거부한다(이름은 영문·숫자·`_`·`-`).
 환경변수 `HANGUL_LAYOUT=2|390|final` 로 시작 레이아웃. `HANGUL_SEBEOL_ORDER=strict` 이면 세벌식 역순을 확정한다(기본은 순서 무관).
 `HANGUL_TRACE=1` 이면 `prompt.edit` / `prompt.submit` 요약을 디버그 로그에만 남긴다.
-상태줄은 켜짐 `한 두벌식` / `한 세벌식 390` / `한 세벌식 최종`, 꺼짐이면 지운다. 한글 폭이 상태줄에 맞는지 실측은 SPEC 을 본다.
+상태줄 문자열은 `한 두벌식` / `한 세벌식 390` / `한 세벌식 최종` 이다. 2.1.289 화면에는 `⚠ hangul: 한 두벌식` 처럼 엔진 접두가 붙고, 그 세 줄은 한 줄에 들어갔다. 꺼지면 지운다.
 
 ## 테스트
 ```
-bun run test      # core 만 (bun)         — 91 통과
-claude plugin test .   # core + hooks 전체 — 111 통과 (CLI 2.1.278 에서)
+bun run test      # core 만 (bun)
+claude plugin test .   # core + hooks — 123 pass / 0 fail (CLI 2.1.289)
 claude plugin validate .claude-plugin/plugin.json
+npx -p typescript@5.9.3 tsc -p .   # 오류 0
 ```
 
 ## 규칙 요약 / 설계 선택
@@ -39,9 +41,15 @@ claude plugin validate .claude-plugin/plugin.json
 
 Claude Code 2.1.287 이상에서 mods 가 기본으로 켜진다. 이 작업의 실세션은 2.1.289.
 
-## 한계 (실측 전후는 SPEC.md)
-- 한영·Caps Lock·Globe 키에는 의존하지 않는다. 전환은 `/hangul`.
-- 붙여넣기는 변환하지 않는다.
+## 2026-10-04 실세션 (Claude Code 2.1.289, 샌드박스, 무효 API 키)
+확인됨: 플러그인 로드, `/hangul`·`/hangul 390`·`/hangul final`, 두벌식 `gksrmf`→`한글`, 세벌식 390/최종 `mfskgw`→`한글`, 백스페이스가 `한글`→`한그`, 붙여넣기 `hello` 는 그대로, 세벌식 최종 `j/f`→`와` 와 맨 앞 `/ab` 유지, Shift+G 는 `{key:"G",shift:true}`, Enter 는 `prompt.submit` 만(`return` 키 없음), vim insert 에서 조합되고 Esc·노멀 `x` 는 훅에 안 오며 다음 입력이 깨진 조합을 버린다.
+
+실측 불가: 한영 키, Caps Lock 키, Globe. tmux 로 그 키를 넣지 못했다. 선택영역 치환, 조합 밑줄이 화면에 그려지는지, 플러그인 reload 후 상태줄 잔상, `$.store` 도 이 세션에서 안 봤다.
+
+## 한계
+- 한영·Caps Lock·Globe 에는 의존하지 않는다. 전환은 `/hangul`. 한영 키가 이벤트로 오는지는 **미검증** (`hooks/editor.ts` TODO).
+- 붙여넣기와 한 번에 묶인 키(`key` 없음)는 변환하지 않는다.
 - 슬래시 명령 이름(`/` 로 시작해 공백 전)은 세벌식에서도 ㅗ로 바꾸지 않는다. 문장 중간의 `/` 는 ㅗ.
-- Enter 는 조합을 확정하고 전송한다. 입력창에 이미 있는 글자를 다시 쓰지 않는다.
-- 상태줄 한글 폭, vim 모드, 한영 키가 `prompt.edit` 로 오는지는 세션에서 확인한 만큼만 SPEC 에 적는다. 확인 못 한 것은 미검증이다.
+- Enter 는 조합 상태만 정리하고, 입력창에 있는 글자를 전송한다.
+- macOS/Windows IME 와는 대조하지 않았다. 도깨비불 근거는 libhangul 소스다.
+- claude-vime 은 LICENSE 가 없어 코드를 복사하지 않았다. 구조만 참고했다. 공개 전에 유사 부분을 사람이 한 번 더 보는 것이 좋다. 라이선스 확인 요청은 보내지 않았다.
