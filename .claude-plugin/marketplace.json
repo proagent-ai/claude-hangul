@@ -1,0 +1,17 @@
+{
+  "name": "proagent",
+  "owner": {
+    "name": "proagent-ai"
+  },
+  "metadata": {
+    "description": "Proagent Claude Code plugins"
+  },
+  "plugins": [
+    {
+      "name": "hangul",
+      "source": "./",
+      "description": "Type Hangul in the Claude Code prompt box without an OS IME (dubeolsik, sebeolsik 390, sebeolsik final)",
+      "version": "0.1.0"
+    }
+  ]
+}

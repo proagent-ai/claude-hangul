@@ -6,6 +6,18 @@ Claude Code 프롬프트에서 OS 한글 IME 없이 두벌식, 세벌식 390, �
 
 ## 설치
 
+Claude Code 안에서:
+
+```
+/plugin marketplace add proagent-ai/claude-hangul
+/plugin install hangul@proagent
+```
+
+새 버전은 `claude plugin update hangul@proagent` 후 `/reload-plugins`.
+Claude Code 2.1.287 이상.
+
+### 개발
+
 ```bash
 git clone https://github.com/proagent-ai/claude-hangul.git
 cd claude-hangul
@@ -13,7 +25,7 @@ git checkout develop
 claude --plugin-dir .
 ```
 
-Claude Code 2.1.287 이상. 이 저장소는 `~/.claude` 에 설치하지 않는다.
+작업 사본은 `--plugin-dir` 로 띄우고, 마켓플레이스 설치본과 같은 세션에 같이 올리지 않는다.
 
 ## 사용
 

@@ -1,6 +1,6 @@
 {
   "name": "claude-hangul",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "private": true,
   "description": "Claude Code mod prototype: type Hangul in the prompt box without an OS IME (dubeolsik / sebeolsik 390 / sebeolsik final)",
   "type": "module",

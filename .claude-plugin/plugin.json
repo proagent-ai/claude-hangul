@@ -1,6 +1,8 @@
 {
   "name": "hangul",
-  "version": "0.0.1",
-  "description": "Prototype: type Hangul in the prompt box without an OS IME (dubeolsik, sebeolsik 390, sebeolsik final)",
-  "author": { "name": "준명 정" }
+  "version": "0.1.0",
+  "description": "Type Hangul in the Claude Code prompt box without an OS IME (dubeolsik, sebeolsik 390, sebeolsik final)",
+  "author": {
+    "name": "준명 정"
+  }
 }
