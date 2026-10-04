@@ -56,6 +56,15 @@ describe('HangulEditor (prompt.edit 어댑터)', () => {
     expect(b.text).toBe('gks')
   })
 
+  test('세벌식 390 시프트 숫자·기호: mfsJ → 한4, 공백 뒤 B → !, 두벌식 숫자·기호는 그대로', () => {
+    const b = newBox('sebeolsik-390')
+    b.type('mfsJ B')
+    expect(b.text).toBe('한4 !')
+    const d = newBox()
+    d.type('dkssud123!@#')
+    expect(d.text).toBe('안녕123!@#')
+  })
+
   test('두벌식 gksrmf → 한글. 열린 단어 전체에 밑줄', () => {
     const b = newBox()
     b.type('gksrmf')

@@ -276,16 +276,24 @@ describe('세벌식 390', () => {
     c.typeAll('ufwx')
     expect([c.backspace().preedit, c.backspace().preedit, c.backspace().preedit]).toEqual(['달', '다', 'u'])
   })
-  test('기호는 기본으로 친 문자 그대로: < 는 <', () => {
-    expect(s3('<')).toBe('<')
-    expect(s3('mfs<')).toBe('한<')
+  test('시프트 숫자·기호는 기본으로 레이아웃 치환: < → 2, J K L → 4 5 6, B → !', () => {
+    expect(s3('<')).toBe('2')
+    expect(s3('mfs<')).toBe('한2')
+    expect(s3('JKL')).toBe('456')
+    expect(s3('mfsJ')).toBe('한4')
+    expect(s3('mfsB')).toBe('한!')
   })
-  test('passthroughLiterals:false 면 세벌식 치환 < → 2', () => {
-    expect(make('sebeolsik-390', { passthroughLiterals: false }).typeAll('mfs<')).toBe('한2')
+  test('기호 뒤에도 같은 단어에서 한글이 이어진다: 한4한', () => expect(s3('mfsJmfs')).toBe('한4한'))
+  test('passthroughLiterals:true 면 기호 키는 친 문자 그대로 < 는 <', () => {
+    expect(make('sebeolsik-390', { passthroughLiterals: true }).typeAll('mfs<')).toBe('한<')
   })
 })
 
 describe('영어·숫자·특수문자는 한글이 아닌 단어로 남긴다', () => {
+  test('대문자 섞인 영어는 기호 키까지 친 키로: 390 Hello, amazingBBBBB!', () => {
+    expect(s3('Hello')).toBe('Hello')
+    expect(s3('amazingBBBBB!')).toBe('amazingBBBBB!')
+  })
   test('세벌식 hello 는 녀llo 가 아니라 hello', () => {
     expect(s3('hello')).toBe('hello')
     expect(sf('hello')).toBe('hello')
@@ -377,13 +385,18 @@ describe('세벌식 최종', () => {
     expect(sf('j7')).toBe('예')
     expect(sf('j8')).toBe('의')
   })
-  test('최종 시프트 기호는 기본으로 친 문자: J 는 J, M 은 M', () => {
-    expect(sf('J')).toBe('J')
-    expect(sf('M')).toBe('M')
-    expect(sf('mfsJ')).toBe('한J')
+  test('최종 시프트 기호는 기본으로 레이아웃 치환: J → 1, B → ?, > → .', () => {
+    expect(sf('J')).toBe('1')
+    expect(sf('mfsJ')).toBe('한1')
+    expect(sf('mfsB')).toBe('한?')
+    expect(sf('mfs>')).toBe('한.')
   })
-  test('passthroughLiterals:false 면 최종 J → 1', () => {
-    expect(make('sebeolsik-final', { passthroughLiterals: false }).typeAll('mfsJ')).toBe('한1')
+  test('최종 . 은 단어를 끊지 않는다: 한.한, 뒤에 영어가 오면 단어 전체가 키', () => {
+    expect(sf('mfs>mfs')).toBe('한.한')
+    expect(sf('mfs>hello')).toBe('mfs>hello')
+  })
+  test('passthroughLiterals:true 면 최종 J 는 J', () => {
+    expect(make('sebeolsik-final', { passthroughLiterals: true }).typeAll('mfsJ')).toBe('한J')
   })
   test('390 과 최종의 차이: 같은 키 D 는 390 에서 ㄺ, 최종에서 ㄼ', () => {
     expect(s3('ufD')).toBe('닭')

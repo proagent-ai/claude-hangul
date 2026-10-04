@@ -17,7 +17,10 @@
 //  * 한 단어(공백·기호 전까지)가 완성 음절만이면 한글이다. 음절이 아닌 조각이 확정되면
 //    그 단어 전체를 친 키로 되돌린다. 세벌식 hello 는 녀llo 가 아니라 hello.
 //    공백·문장부호로 단어가 끝나면, 한글+낱자가 섞인 채로 두지 않고 키로 되돌린다.
-//  * 숫자만인 단어는 숫자다. 기호(lit)는 기본으로 친 문자 그대로다(passthroughLiterals:false 면 레이아웃 치환).
+//  * 숫자만인 단어는 숫자다. 기호(lit)는 기본으로 레이아웃 치환(390 J → 4)이고 단어의 일부다.
+//    세벌식은 숫자·기호가 시프트 자리에만 있어서 치환하지 않으면 칠 방법이 없다.
+//    단어가 음절이 아니게 되면 기호 키도 함께 친 키로 돌아간다. 390 Hello 는 'ello 가 아니라 Hello.
+//    passthroughLiterals:true 면 기호 키는 친 문자 그대로 통과한다.
 //  * 백스페이스는 열린 단어의 마지막 키를 지우고 다시 조합한다.
 //  * 레이아웃에 없는 키(공백, 두벌식 숫자 등)는 consumed=false 로 돌려주고, 조합 중이던 글자는 확정시킨다.
 import { CHO_COMBINE, composeSyllable, isCho, isJong, JONG_COMBINE, JUNG_COMBINE } from './jamo'
@@ -146,8 +149,8 @@ export interface FeedResult {
 
 export interface ComposerOptions {
   /**
-   * 레이아웃 기호 치환(lit)을 칠지. 기본 true: `<` `?` 같은 키는 친 문자 그대로.
-   * false 면 세벌식 표의 치환(`<`→`2`, 최종 `?`→`!`)을 적용한다.
+   * 레이아웃 기호 키(lit)를 친 문자 그대로 통과시킬지. 기본 false: 세벌식 표의 치환(`<`→`2`, 최종 `?`→`!`)을 적용한다.
+   * true 면 `<` `?` 같은 키는 친 문자 그대로.
    */
   readonly passthroughLiterals?: boolean
   /**
@@ -218,20 +221,27 @@ export class HangulComposer {
     const reorder = this.options.autoReorder !== false
     for (const ch of keys) {
       const def = this.layout.map[ch]
-      if (def === undefined || def.role === 'lit') continue
+      if (def === undefined) continue
+      if (def.role === 'lit') {
+        // 기호는 조합 중이던 음절을 닫고 그 자리에 치환 문자를 낸다. 닫힌 조각이 음절이 아니면 단어 전체가 키.
+        const pending = render(syl)
+        if (!isHangulRun(pending)) latin = true
+        text += pending + def.text
+        syl = EMPTY
+        continue
+      }
       const step = this.step(syl, def, ch, reorder)
       if (step.commit !== '' && !isHangulRun(step.commit)) latin = true
       if (!latin) text += step.commit
       syl = step.next
     }
     if (latin) return keys
-    const shown = text + render(syl)
-    if (closing && shown !== '' && !isHangulRun(shown)) return keys
-    return shown
+    const tail = render(syl)
+    if (closing && !isHangulRun(tail)) return keys
+    return text + tail
   }
 
-  private step(syl: Syl, def: KeyDef, ch: string, reorder: boolean): Step {
-    if (def.role === 'lit') return { commit: render(syl), next: EMPTY }
+  private step(syl: Syl, def: Exclude<KeyDef, { role: 'lit' }>, ch: string, reorder: boolean): Step {
     const jamo = def.jamo
     if (this.layout.kind === 'dubeol') {
       if (def.role === 'jung') return dubeolVowel(syl, jamo, ch)
@@ -246,14 +256,10 @@ export class HangulComposer {
   /** 문자 하나(키보드가 만든 ASCII 문자, 시프트 반영)를 넣는다. */
   feed(ch: string): FeedResult {
     const def: KeyDef | undefined = this.layout.map[ch]
-    const passLit = def?.role === 'lit' && this.options.passthroughLiterals !== false
+    const passLit = def?.role === 'lit' && this.options.passthroughLiterals === true
     if (def === undefined || passLit) {
       const commit = this.flush()
       return { consumed: false, commit, preedit: '' }
-    }
-    if (def.role === 'lit') {
-      const commit = this.flush() + def.text
-      return { consumed: true, commit, preedit: '' }
     }
     this.wordKeys += ch
     // commit 은 비운다. 단어 전체가 preedit 이라, 녀llo 처럼 섞이면 앞의 녀 까지 원문으로 바꿀 수 있다.
