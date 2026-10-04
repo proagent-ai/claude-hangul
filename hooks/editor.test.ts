@@ -77,7 +77,7 @@ describe('HangulEditor (prompt.edit 어댑터)', () => {
     b.backspace()
     expect(b.text).toBe('한그')
     b.backspace()
-    expect(b.text).toBe('한ㄱ')
+    expect(b.text).toBe('한r')
     b.backspace()
     expect(b.text).toBe('한')
     b.backspace() // 조합이 없으니 편집기가 한 글자를 지운다
@@ -103,10 +103,22 @@ describe('HangulEditor (prompt.edit 어댑터)', () => {
     expect(b.text).toBe('/hangul')
   })
 
-  test('슬래시 명령 이름 뒤 공백부터는 다시 한글', () => {
+  test('다른 슬래시 명령은 이름 뒤 공백부터 다시 한글', () => {
     const b = newBox()
-    b.type('/hangul gks')
-    expect(b.text).toBe('/hangul 한')
+    b.type('/compact gks')
+    expect(b.text).toBe('/compact 한')
+  })
+
+  test('/hangul 인자는 영어 그대로라 off 와 390 을 칠 수 있다', () => {
+    const dubeol = newBox()
+    dubeol.type('/hangul off')
+    expect(dubeol.text).toBe('/hangul off')
+    const sebeol = newBox('sebeolsik-390')
+    sebeol.type('/hangul 390')
+    expect(sebeol.text).toBe('/hangul 390')
+    const final = newBox('sebeolsik-final')
+    final.type('/hangul final')
+    expect(final.text).toBe('/hangul final')
   })
 
   test('문장 중간의 / 는 레이아웃을 따른다 (세벌식: ㅗ)', () => {
@@ -128,7 +140,7 @@ describe('HangulEditor (prompt.edit 어댑터)', () => {
     b.type('gks')
     b.press({ key: 'a', ctrl: true })
     b.type('k')
-    expect(b.text).toBe('한ㅏ')
+    expect(b.text).toBe('한k')
   })
 
   test('커서가 조합 구간 밖에서 입력되면 기존 조합은 확정하고 새 조합을 시작', () => {
@@ -137,7 +149,7 @@ describe('HangulEditor (prompt.edit 어댑터)', () => {
     b.cursor = 0
     b.type('k')
     // 'k' 는 한글 규칙으로 새로 조합된다: 한 앞에 ㅏ
-    expect(b.text).toBe('ㅏ한')
+    expect(b.text).toBe('k한')
   })
 
   test('밖에서 입력창이 비워지면 조합 상태를 버리고 새로 시작', () => {
@@ -146,7 +158,7 @@ describe('HangulEditor (prompt.edit 어댑터)', () => {
     b.text = ''
     b.cursor = 0
     b.type('k')
-    expect(b.text).toBe('ㅏ')
+    expect(b.text).toBe('k')
   })
 
   test('끄면 조합 중이던 글자는 그대로 남고 이후 입력은 원문', () => {

@@ -18,8 +18,9 @@ export type BoxAnswer = { text: string; cursor: number; decorations: Decoration[
 export type Answer = { kind: 'box'; box: BoxAnswer } | { kind: 'pass'; edit?: Edit }
 
 // 맨 앞에서 슬래시 명령 이름을 치는 중이면 그대로 통과시킨다. 세벌식에서 '/' 는 ㅗ 이므로 필수.
-// (claude-vime 도 같은 처리를 한다.) 명령 이름 뒤 공백부터는 다시 한글이 된다.
-const isSlashCommandName = (before: string) => /^\/\S*$/.test(before)
+// 다른 명령은 이름 뒤 공백부터 다시 한글. /hangul 만은 인자(on off 2 390 final)까지 영어 그대로.
+const isSlashCommandName = (head: string) => /^\/\S*$/.test(head)
+const isHangulCommand = (head: string) => /^\/hangul(?:\s+\S*)?$/.test(head)
 
 /** 조합기에 넘길 단일 인쇄 가능 ASCII 문자. 공백은 레이아웃에 없으므로 통과 키가 된다. */
 const SINGLE_KEY = /^[\x20-\x7e]$/
@@ -102,7 +103,11 @@ export class HangulEditor {
       this.commit()
       composing = false
     }
-    if (!composing && isSlashCommandName(e.text.slice(0, e.start) + e.inputText)) return { kind: 'pass' }
+    const head = e.text.slice(0, e.start) + e.inputText
+    if (isSlashCommandName(head) || isHangulCommand(head)) {
+      if (composing) this.commit()
+      return { kind: 'pass' }
+    }
 
     const r = this.composer.feed(e.inputText)
     if (!r.consumed) {

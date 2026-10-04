@@ -14,6 +14,7 @@ Claude Code 프롬프트 입력창에서 OS IME 없이 한글을 직접 조합�
 
 ## 사용
 `/hangul` 토글, `/hangul on|off`, `/hangul 2|390|final`(선택하면 켜짐).
+`/hangul` 을 치는 동안 인자까지 영어 그대로다. `off` 가 한글로 바뀌지 않는다.
 화면의 명령 결과는 `hangul: on (두벌식)` 처럼 보인다. 훅이 돌려주는 문자열은 `on (두벌식)` / `off` 이고, `hangul:` 은 엔진이 붙인다.
 명령 이름은 영문만 된다. `/한글` 은 Claude Code 가 거부한다(이름은 영문·숫자·`_`·`-`).
 환경변수 `HANGUL_LAYOUT=2|390|final` 로 시작 레이아웃. `HANGUL_SEBEOL_ORDER=strict` 이면 세벌식 역순을 확정한다(기본은 순서 무관).

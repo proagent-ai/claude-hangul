@@ -40,17 +40,17 @@ describe('유니코드 음절 구성식', () => {
 
 describe('두벌식: 기본 조합', () => {
   test("'gksrmf' → 한글", () => expect(d('gksrmf')).toBe('한글'))
-  test('단계별: ㅎ → 하 → 한 → (한)ㄱ → (한)그 → (한)글', () => {
-    expect(trace(make('dubeolsik'), 'gksrmf')).toEqual(['ㅎ', '하', '한', '한ㄱ', '한그', '한글'])
+  test('단계별: 음절 전 키는 원문. g → 하 → 한 → 한r → 한그 → 한글', () => {
+    expect(trace(make('dubeolsik'), 'gksrmf')).toEqual(['g', '하', '한', '한r', '한그', '한글'])
   })
-  test("'ㅏ' 단독: k", () => {
+  test('모음만은 음절이 아니므로 k 는 k', () => {
     const c = make('dubeolsik')
-    expect(c.feed('k')).toEqual({ consumed: true, commit: '', preedit: 'ㅏ' })
-    expect(c.flush()).toBe('ㅏ')
+    expect(c.feed('k')).toEqual({ consumed: true, commit: '', preedit: 'k' })
+    expect(c.flush()).toBe('k')
   })
-  test('자음 단독: r → ㄱ', () => expect(d('r')).toBe('ㄱ'))
+  test('자음 단독은 음절이 아니므로 r 은 r', () => expect(d('r')).toBe('r'))
   test('안녕: ㅇㅏㄴ + ㄴ(받침 결합 불가→확정) ㅕ ㅇ', () => expect(d('dkssud')).toBe('안녕'))
-  test('두 번 친 같은 초성은 합치지 않는다: rr → ㄱㄱ (쌍자음은 시프트)', () => expect(d('rr')).toBe('ㄱㄱ'))
+  test('두 번 친 같은 초성은 합치지 않는다: rr 은 rr (쌍자음은 시프트)', () => expect(d('rr')).toBe('rr'))
   test('시프트 쌍자음: Rk → 까, Tk → 싸, Wk → 짜, Ek → 따, Qk → 빠', () => {
     expect(d('Rk')).toBe('까')
     expect(d('Tk')).toBe('싸')
@@ -64,9 +64,9 @@ describe('두벌식: 기본 조합', () => {
   })
   test('대문자인 일반 키는 소문자와 같다: K = ㅏ', () => expect(d('rK')).toBe('가'))
   test('받침이 될 수 없는 자음은 확정하고 새 음절: 가 + ㅃ(Q)', () => {
-    expect(trace(make('dubeolsik'), 'rkQk')).toEqual(['ㄱ', '가', '가ㅃ', '가빠'])
+    expect(trace(make('dubeolsik'), 'rkQk')).toEqual(['r', '가', '가Q', '가빠'])
   })
-  test('모음만 연속: kk → ㅏㅏ (결합 없음)', () => expect(d('kk')).toBe('ㅏㅏ'))
+  test('모음만 연속은 음절이 아니므로 kk', () => expect(d('kk')).toBe('kk'))
 })
 
 describe('두벌식: 겹받침', () => {
@@ -90,14 +90,14 @@ describe('두벌식: 겹받침', () => {
     expect(d('rktt')).toBe('갔')
   })
   test('겹받침 뒤에 자음이 또 오면 확정: 읽다 = dlfrek', () => {
-    expect(trace(make('dubeolsik'), 'dlfrek')).toEqual(['ㅇ', '이', '일', '읽', '읽ㄷ', '읽다'])
+    expect(trace(make('dubeolsik'), 'dlfrek')).toEqual(['d', '이', '일', '읽', '읽e', '읽다'])
   })
-  test('결합 불가 조합(ㄴㄴ)은 확정: 안ㄴ', () => expect(d('dksss')).toBe('안ㄴㄴ'))
+  test('결합 불가 조합(ㄴㄴ)은 원문으로 확정: 안ss', () => expect(d('dksss')).toBe('안ss'))
 })
 
 describe('두벌식: 도깨비불(받침이 다음 모음으로 넘어감)', () => {
   test('갈 + ㅏ → 가라 (rkfk)', () => {
-    expect(trace(make('dubeolsik'), 'rkfk')).toEqual(['ㄱ', '가', '갈', '가라'])
+    expect(trace(make('dubeolsik'), 'rkfk')).toEqual(['r', '가', '갈', '가라'])
   })
   test('한글 → 하 + 글 처럼: 한 + ㅡ → 하느 (gksm)', () => expect(d('gksm')).toBe('하느'))
   test('겹받침은 뒤 자모만 넘어간다: 닭 + ㅣ → 달기 (ekfrl)', () => expect(d('ekfrl')).toBe('달기'))
@@ -112,7 +112,7 @@ describe('두벌식: 도깨비불(받침이 다음 모음으로 넘어감)', () 
   test('시프트 ㄲ 도 한 덩어리: 갂+ㅏ→가까 (rkRk). ㄱ+ㄱ 으로 만든 ㄲ(낚+ㅣ→낙기)와 다르다', () => {
     expect(d('rkRk')).toBe('가까')
   })
-  test('받침 없는 음절 뒤 모음은 새 음절(도깨비불 아님): 가 + ㅏ → 가ㅏ', () => expect(d('rkk')).toBe('가ㅏ'))
+  test('받침 없는 음절 뒤 모음은 새 덩어리. 음절이 아니면 키: 가 + k', () => expect(d('rkk')).toBe('가k'))
   test('연속: 한국어 = gksrnrdj (한 / 국 / 어)', () => expect(d('gksrnrdj')).toBe('한국어'))
 })
 
@@ -121,8 +121,8 @@ describe('두벌식: 겹모음', () => {
     const cases: Record<string, string> = { dhk: '와', dho: '왜', dhl: '외', dnj: '워', dnp: '웨', dnl: '위', dml: '의' }
     for (const [keys, want] of Object.entries(cases)) expect(d(keys)).toBe(want)
   })
-  test('겹모음 순서 고정: ㅏ 다음 ㅗ 는 결합 안 함 (kh → ㅏㅗ)', () => expect(d('kh')).toBe('ㅏㅗ'))
-  test('결합표에 없는 모음쌍: ㅗ + ㅓ → 오 + ㅓ', () => expect(d('dhj')).toBe('오ㅓ'))
+  test('겹모음 순서 고정: ㅏ 다음 ㅗ 는 결합 안 함. 음절이 아니면 kh', () => expect(d('kh')).toBe('kh'))
+  test('결합표에 없는 모음쌍: ㅗ + ㅓ → 오 + j', () => expect(d('dhj')).toBe('오j'))
   test('겹모음 + 받침: 왕 = dhkd, 괜 = rhos', () => {
     expect(d('dhkd')).toBe('왕')
     expect(d('rhos')).toBe('괜')
@@ -142,21 +142,21 @@ describe('두벌식: 백스페이스(자모 단위 해체)', () => {
     for (let i = 0; i < n; i++) seen.push(c.backspace().preedit)
     return seen
   }
-  test('글(그+ㄹ): 글 → 그 → ㄱ → 빈', () => expect(bsAll('rmf', 3)).toEqual(['그', 'ㄱ', '']))
+  test('글(그+ㄹ): 글 → 그 → r → 빈', () => expect(bsAll('rmf', 3)).toEqual(['그', 'r', '']))
   test('한글 입력 후 BS: 확정된 한은 건드리지 않는다', () => {
     const c = make('dubeolsik')
     c.typeAll('gksrmf')
     expect(c.backspace()).toEqual({ consumed: true, preedit: '그' })
-    expect(c.backspace()).toEqual({ consumed: true, preedit: 'ㄱ' })
+    expect(c.backspace()).toEqual({ consumed: true, preedit: 'r' })
     expect(c.backspace()).toEqual({ consumed: true, preedit: '' })
     expect(c.backspace()).toEqual({ consumed: false, preedit: '' }) // 이제 편집기가 "한"을 지운다
   })
-  test('겹받침 해체: 닭 → 달 → 다 → ㄷ', () => expect(bsAll('ekfr', 3)).toEqual(['달', '다', 'ㄷ']))
-  test('겹모음 해체: 와 → 오 → ㅇ', () => expect(bsAll('dhk', 2)).toEqual(['오', 'ㅇ']))
+  test('겹받침 해체: 닭 → 달 → 다 → e', () => expect(bsAll('ekfr', 3)).toEqual(['달', '다', 'e']))
+  test('겹모음 해체: 와 → 오 → d', () => expect(bsAll('dhk', 2)).toEqual(['오', 'd']))
   test('도깨비불 뒤 BS: 가라 → (라→ㄹ) → 빈. 이미 확정된 가는 남는다', () => {
     const c = make('dubeolsik')
     expect(c.typeAll('rkfk')).toBe('가라')
-    expect(c.backspace().preedit).toBe('ㄹ')
+    expect(c.backspace().preedit).toBe('f')
     expect(c.backspace().preedit).toBe('')
     expect(c.flush()).toBe('')
   })
@@ -202,14 +202,14 @@ describe('통과 키와 확정', () => {
 describe('세벌식 390', () => {
   test('한글 = m f s / k g w (ㅎ ㅏ ㄴ / ㄱ ㅡ ㄹ)', () => {
     expect(s3('mfskgw')).toBe('한글')
-    expect(trace(make('sebeolsik-390'), 'mfskgw')).toEqual(['ㅎ', '하', '한', '한ㄱ', '한그', '한글'])
+    expect(trace(make('sebeolsik-390'), 'mfskgw')).toEqual(['m', '하', '한', '한k', '한그', '한글'])
   })
-  test('도깨비불 없음: 갈 + ㅏ → 갈ㅏ (종성 뒤 모음은 새 음절)', () => {
-    expect(s3('kfwf')).toBe('갈ㅏ')
+  test('도깨비불 없음: 갈 뒤 ㅏ는 음절이 아니면 키 f', () => {
+    expect(s3('kfwf')).toBe('갈f')
   })
   test('초성 ㅇ 을 쳐야 모음 음절: 아가 = j f k f', () => expect(s3('jfkf')).toBe('아가'))
-  test('ㅏ 단독: f', () => expect(s3('f')).toBe('ㅏ'))
-  test('초성 키 단독: k → ㄱ', () => expect(s3('k')).toBe('ㄱ'))
+  test('ㅏ 단독은 음절이 아니므로 f', () => expect(s3('f')).toBe('f'))
+  test('초성 키 단독은 음절이 아니므로 k', () => expect(s3('k')).toBe('k'))
   test('쌍자음은 같은 초성 키 두 번: kkf → 까, uuf → 따, ;;f → 빠, nnf → 싸, llf → 짜', () => {
     expect(s3('kkf')).toBe('까')
     expect(s3('uuf')).toBe('따')
@@ -217,7 +217,7 @@ describe('세벌식 390', () => {
     expect(s3('nnf')).toBe('싸')
     expect(s3('llf')).toBe('짜')
   })
-  test('중성이 차면 같은 초성 반복은 새 음절: kfk → 가ㄱ', () => expect(s3('kfk')).toBe('가ㄱ'))
+  test('중성이 차면 같은 초성 반복은 새 덩어리: kfk → 가k', () => expect(s3('kfk')).toBe('가k'))
   test('겹모음은 ㅗ/ㅜ 키 뒤에 모음: 와 = j v f, 왜 = j v r, 외 = j v d, 워 = j b t, 웨 = j b c, 위 = j b d, 의 = j g d', () => {
     expect(s3('jvf')).toBe('와')
     expect(s3('jvr')).toBe('왜')
@@ -254,15 +254,23 @@ describe('세벌식 390', () => {
   })
   test('삶 = n f w z (받침 ㄹ+ㅁ=ㄻ)', () => expect(s3('nfwz')).toBe('삶'))
   test('통과: 공백은 확정 후 통과', () => expect(s3('mfs mfs')).toBe('한 한'))
+  test('초성만 이어지면 한글이 아니라 친 키: hoy', () => {
+    expect(s3('hoy')).toBe('hoy')
+    expect(sf('hoy')).toBe('hoy')
+  })
+  test('숫자만이면 세벌식 자모로 바꾸지 않는다: 390', () => {
+    expect(s3('390')).toBe('390')
+    expect(sf('390')).toBe('390')
+  })
   test('백스페이스 자모 해체: 한 → 하 → ㅎ → 빈', () => {
     const c = make('sebeolsik-390')
     c.typeAll('mfs')
-    expect([c.backspace().preedit, c.backspace().preedit, c.backspace().preedit]).toEqual(['하', 'ㅎ', ''])
+    expect([c.backspace().preedit, c.backspace().preedit, c.backspace().preedit]).toEqual(['하', 'm', ''])
   })
   test('백스페이스: 닭(ufwx) → 달 → 다 → ㄷ', () => {
     const c = make('sebeolsik-390')
     c.typeAll('ufwx')
-    expect([c.backspace().preedit, c.backspace().preedit, c.backspace().preedit]).toEqual(['달', '다', 'ㄷ'])
+    expect([c.backspace().preedit, c.backspace().preedit, c.backspace().preedit]).toEqual(['달', '다', 'u'])
   })
   test('레이아웃 치환 기호(Emacs·uim 일치, KS 원문 미확인): < → 2, > → 3', () => {
     expect(s3('<')).toBe('2')
@@ -282,28 +290,28 @@ describe('세벌식: 순서 무관은 기본값. libhangul 기본(option_auto_re
     expect(s3('3fkq')).toBe('값')
     expect(s3('fk3q')).toBe('값')
   })
-  test('받침 먼저: s f m → 한 (단계: ㄴ → ㅏㄴ → 한)', () => {
-    expect(trace(make('sebeolsik-390'), 'sfm')).toEqual(['ㄴ', 'ㅏㄴ', '한'])
+  test('받침 먼저: s f m → 한 (단계: s → sf → 한). 음절 전엔 키를 보인다', () => {
+    expect(trace(make('sebeolsik-390'), 'sfm')).toEqual(['s', 'sf', '한'])
   })
-  test('초성 없는 상태의 중성+종성은 호환 자모로 나열: ㅏㄴ', () => expect(s3('fs')).toBe('ㅏㄴ'))
-  test('순서가 달라도 칸이 이미 찼으면 새 음절: 한 + ㅎ 초성 → 한ㅎ', () => expect(s3('mfsm')).toBe('한ㅎ'))
+  test('초성 없는 중성+종성은 음절이 아니므로 fs', () => expect(s3('fs')).toBe('fs'))
+  test('순서가 달라도 칸이 이미 찼으면 새 덩어리: 한 + ㅎ 초성 → 한m', () => expect(s3('mfsm')).toBe('한m'))
   test('최종에서도 동일: 한 의 6가지 순서', () => {
     for (const keys of PERMS('m', 'f', 's')) expect(sf(keys)).toBe('한')
   })
-  test('겹모음은 앞 모음이 먼저여야 한다(순서 무관 적용 안 함): f v → 아 + ㅗ', () => {
-    expect(s3('jfv')).toBe('아ㅗ')
+  test('겹모음은 앞 모음이 먼저여야 한다(순서 무관 적용 안 함): f v → 아 + v', () => {
+    expect(s3('jfv')).toBe('아v')
   })
-  test('겹모음은 받침이 없을 때만: 곡(k v x) 뒤 ㅏ → 곡ㅏ', () => {
-    expect(s3('kvxf')).toBe('곡ㅏ')
+  test('겹모음은 받침이 없을 때만: 곡(k v x) 뒤 ㅏ → 곡f', () => {
+    expect(s3('kvxf')).toBe('곡f')
   })
 })
 
 describe('세벌식 autoReorder:false 는 libhangul 기본(process_jaso, auto_reorder 꺼짐)처럼 역순을 확정한다', () => {
   const strict = (keys: string) => make('sebeolsik-390', { autoReorder: false }).typeAll(keys)
   test('정순 mfs 는 그대로 한', () => expect(strict('mfs')).toBe('한'))
-  test('종성 다음 중성은 채우지 않고 확정: sf → ㄴㅏ', () => expect(strict('sf')).toBe('ㄴㅏ'))
-  test('중성 다음 초성은 채우지 않고 확정: fm → ㅏㅎ', () => expect(strict('fm')).toBe('ㅏㅎ'))
-  test('sfm(ㄴ ㅏ ㅎ) → ㄴㅏㅎ. 기본 autoReorder 의 한 과 다르다', () => expect(strict('sfm')).toBe('ㄴㅏㅎ'))
+  test('종성 다음 중성은 채우지 않고 확정. 음절이 아니면 sf', () => expect(strict('sf')).toBe('sf'))
+  test('중성 다음 초성은 채우지 않고 확정. 음절이 아니면 fm', () => expect(strict('fm')).toBe('fm'))
+  test('sfm 은 음절이 안 되어 sfm. 기본 autoReorder 는 한', () => expect(strict('sfm')).toBe('sfm'))
 })
 
 describe('세벌식 최종', () => {
@@ -344,12 +352,12 @@ describe('세벌식 최종', () => {
   test('쌍자음·겹모음·도깨비불 없음은 390 과 동일: kkf → 까, jvf → 와, kfwf → 갈ㅏ', () => {
     expect(sf('kkf')).toBe('까')
     expect(sf('jvf')).toBe('와')
-    expect(sf('kfwf')).toBe('갈ㅏ')
+    expect(sf('kfwf')).toBe('갈f')
   })
   test('백스페이스: 앉(jfE) → 아 → ㅇ', () => {
     const c = make('sebeolsik-final')
     c.typeAll('jfE')
-    expect([c.backspace().preedit, c.backspace().preedit]).toEqual(['아', 'ㅇ'])
+    expect([c.backspace().preedit, c.backspace().preedit]).toEqual(['아', 'j'])
   })
 })
 

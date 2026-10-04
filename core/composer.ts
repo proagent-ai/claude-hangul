@@ -15,7 +15,8 @@
 //      - 초성 겹치기는 중성·종성이 비어 있을 때만. 겹모음은 종성이 없고 앞 모음이 스택의 마지막일 때만(ㅗ→ㅏ).
 //        모음끼리의 순서 무관은 없다. libhangul 도 peek 가 중성일 때만 겹모음을 합친다.
 //  * 백스페이스는 조합 중인 음절 안에서 입력 이전 상태로 되돌린다(자모 단위 해체). 이미 확정된 글자는 건드리지 않는다.
-//  * 레이아웃에 없는 키(공백, 숫자 등)는 consumed=false 로 돌려주고, 조합 중이던 글자는 확정시킨다.
+//  * 초성+중성이 모인 음절만 한글로 낸다. 음절이 아니면 호환 자모 대신 친 키를 그대로 낸다. 숫자만인 덩어리도 키 그대로.
+//  * 레이아웃에 없는 키(공백, 두벌식 숫자 등)는 consumed=false 로 돌려주고, 조합 중이던 글자는 확정시킨다.
 import { CHO_COMBINE, composeSyllable, isCho, isJong, JONG_COMBINE, JUNG_COMBINE } from './jamo'
 import type { KeyDef } from './keydef'
 import type { Layout } from './layouts'
@@ -25,9 +26,11 @@ interface Syl {
   readonly cho: string
   readonly jung: string
   readonly jong: readonly string[]
+  /** 이 덩어리를 만든 원문 키. 음절이 아니면 화면에 이 문자열을 낸다. */
+  readonly keys: string
 }
 
-const EMPTY: Syl = { cho: '', jung: '', jong: [] }
+const EMPTY: Syl = { cho: '', jung: '', jong: [], keys: '' }
 const isEmpty = (s: Syl): boolean => s.cho === '' && s.jung === '' && s.jong.length === 0
 
 /** 받침 자모 목록을 하나의 받침 문자로. 겹치지 않으면 undefined. */
@@ -38,14 +41,16 @@ function jongChar(parts: readonly string[]): string | undefined {
   return undefined
 }
 
-/** 음절 상태를 화면 문자열로. 초+중이 있으면 완성 음절, 아니면 호환 자모를 나열한다. */
+/** 완성 음절이면 한글, 아니면 친 키 그대로. 숫자만이면 세벌식 자모로 바꾸지 않는다. */
 function render(s: Syl): string {
+  if (isEmpty(s)) return ''
+  if (/^\d+$/.test(s.keys)) return s.keys
   const t = jongChar(s.jong) ?? ''
   if (s.cho !== '' && s.jung !== '') {
     const syl = composeSyllable(s.cho, s.jung, t)
     if (syl !== undefined) return syl
   }
-  return s.cho + s.jung + t
+  return s.keys
 }
 
 interface Step {
@@ -57,18 +62,18 @@ interface Step {
 }
 
 /** 두벌식 자음. */
-function dubeolConsonant(s: Syl, c: string): Step {
-  if (isEmpty(s)) return { commit: '', next: { ...EMPTY, cho: c } }
+function dubeolConsonant(s: Syl, c: string, key: string): Step {
+  if (isEmpty(s)) return { commit: '', next: { ...EMPTY, cho: c, keys: key } }
   // 초성만 있거나(ㄱㄱ은 합치지 않음) 모음만 있으면 확정하고 새 음절.
-  if (s.jung === '' || s.cho === '') return { commit: render(s), next: { ...EMPTY, cho: c } }
+  if (s.jung === '' || s.cho === '') return { commit: render(s), next: { ...EMPTY, cho: c, keys: key } }
   if (s.jong.length === 0) {
-    if (isJong(c)) return { commit: '', next: { ...s, jong: [c] } }
-    return { commit: render(s), next: { ...EMPTY, cho: c } }
+    if (isJong(c)) return { commit: '', next: { ...s, jong: [c], keys: s.keys + key } }
+    return { commit: render(s), next: { ...EMPTY, cho: c, keys: key } }
   }
   if (s.jong.length === 1 && JONG_COMBINE[s.jong[0]! + c] !== undefined) {
-    return { commit: '', next: { ...s, jong: [s.jong[0]!, c] } }
+    return { commit: '', next: { ...s, jong: [s.jong[0]!, c], keys: s.keys + key } }
   }
-  return { commit: render(s), next: { ...EMPTY, cho: c } }
+  return { commit: render(s), next: { ...EMPTY, cho: c, keys: key } }
 }
 
 /** 모음(두벌식·세벌식 공통의 중성 처리 중 "받침 없음/겹모음" 부분). 처리 불가면 undefined. */
@@ -81,49 +86,50 @@ function tryJung(s: Syl, v: string): Syl | undefined {
   return undefined
 }
 
-function dubeolVowel(s: Syl, v: string): Step {
+function dubeolVowel(s: Syl, v: string, key: string): Step {
   if (s.jong.length > 0) {
     // 도깨비불: 마지막 받침 자모가 다음 음절의 초성이 된다.
     // libhangul hangul_ic_process_jamo: 종성 뒤 중성이면 pop. peek 가 종성이면
     // hangul_jongseong_get_diff 로 뒤 자모만 초성으로 넘기고, 아니면 종성 전체를 초성으로 넘긴다.
     // ㄱ+ㄱ→ㄲ 는 diff 가 ㄱ을 넘긴다(낚+ㅣ→낙기). 시프트로 한 번에 넣은 ㅆ/ㄲ 는 스택에 한 덩어리라 통째로 넘어간다.
     const moved = s.jong[s.jong.length - 1]!
-    const stay: Syl = { ...s, jong: s.jong.slice(0, -1) }
-    const first: Syl = { ...EMPTY, cho: moved }
-    return { commit: render(stay), next: { ...first, jung: v }, seed: [EMPTY, first] }
+    const movedKey = s.keys.slice(-1)
+    const stay: Syl = { ...s, jong: s.jong.slice(0, -1), keys: s.keys.slice(0, -1) }
+    const first: Syl = { ...EMPTY, cho: moved, keys: movedKey }
+    return { commit: render(stay), next: { ...first, jung: v, keys: movedKey + key }, seed: [EMPTY, first] }
   }
   const joined = tryJung(s, v)
-  if (joined !== undefined) return { commit: '', next: joined }
-  return { commit: render(s), next: { ...EMPTY, jung: v } }
+  if (joined !== undefined) return { commit: '', next: { ...joined, keys: s.keys + key } }
+  return { commit: render(s), next: { ...EMPTY, jung: v, keys: key } }
 }
 
-function sebeolCho(s: Syl, c: string, autoReorder: boolean): Step {
+function sebeolCho(s: Syl, c: string, key: string, autoReorder: boolean): Step {
   if (s.cho === '') {
     // libhangul process_jaso, auto_reorder 꺼짐: 중성이나 종성이 이미 있으면 빈 초성을 채우지 않고 확정한다.
-    if (!autoReorder && (s.jung !== '' || s.jong.length > 0)) return { commit: render(s), next: { ...EMPTY, cho: c } }
-    return { commit: '', next: { ...s, cho: c } }
+    if (!autoReorder && (s.jung !== '' || s.jong.length > 0)) return { commit: render(s), next: { ...EMPTY, cho: c, keys: key } }
+    return { commit: '', next: { ...s, cho: c, keys: s.keys + key } }
   }
   if (s.jung === '' && s.jong.length === 0) {
     const combined = CHO_COMBINE[s.cho + c]
-    if (combined !== undefined) return { commit: '', next: { ...s, cho: combined } }
+    if (combined !== undefined) return { commit: '', next: { ...s, cho: combined, keys: s.keys + key } }
   }
-  return { commit: render(s), next: { ...EMPTY, cho: c } }
+  return { commit: render(s), next: { ...EMPTY, cho: c, keys: key } }
 }
 
-function sebeolJung(s: Syl, v: string, autoReorder: boolean): Step {
+function sebeolJung(s: Syl, v: string, key: string, autoReorder: boolean): Step {
   // libhangul process_jaso, auto_reorder 꺼짐: 종성이 있으면 빈 중성을 채우지 않고 확정한다.
-  if (!autoReorder && s.jung === '' && s.jong.length > 0) return { commit: render(s), next: { ...EMPTY, jung: v } }
+  if (!autoReorder && s.jung === '' && s.jong.length > 0) return { commit: render(s), next: { ...EMPTY, jung: v, keys: key } }
   const joined = tryJung(s, v)
-  if (joined !== undefined) return { commit: '', next: joined }
-  return { commit: render(s), next: { ...EMPTY, jung: v } }
+  if (joined !== undefined) return { commit: '', next: { ...joined, keys: s.keys + key } }
+  return { commit: render(s), next: { ...EMPTY, jung: v, keys: key } }
 }
 
-function sebeolJong(s: Syl, t: string): Step {
-  if (s.jong.length === 0) return { commit: '', next: { ...s, jong: [t] } }
+function sebeolJong(s: Syl, t: string, key: string): Step {
+  if (s.jong.length === 0) return { commit: '', next: { ...s, jong: [t], keys: s.keys + key } }
   if (s.jong.length === 1 && JONG_COMBINE[s.jong[0]! + t] !== undefined) {
-    return { commit: '', next: { ...s, jong: [s.jong[0]!, t] } }
+    return { commit: '', next: { ...s, jong: [s.jong[0]!, t], keys: s.keys + key } }
   }
-  return { commit: render(s), next: { ...EMPTY, jong: [t] } }
+  return { commit: render(s), next: { ...EMPTY, jong: [t], keys: key } }
 }
 
 export interface FeedResult {
@@ -203,12 +209,12 @@ export class HangulComposer {
     let step: Step
     const reorder = this.options.autoReorder !== false
     if (this.layout.kind === 'dubeol') {
-      if (def.role === 'jung') step = dubeolVowel(prev, jamo)
+      if (def.role === 'jung') step = dubeolVowel(prev, jamo, ch)
       else if (!isCho(jamo)) step = { commit: this.flush(), next: EMPTY } // 방어: 두벌식 표에 없는 자음
-      else step = dubeolConsonant(prev, jamo)
-    } else if (def.role === 'cho') step = sebeolCho(prev, jamo, reorder)
-    else if (def.role === 'jung') step = sebeolJung(prev, jamo, reorder)
-    else step = sebeolJong(prev, jamo)
+      else step = dubeolConsonant(prev, jamo, ch)
+    } else if (def.role === 'cho') step = sebeolCho(prev, jamo, ch, reorder)
+    else if (def.role === 'jung') step = sebeolJung(prev, jamo, ch, reorder)
+    else step = sebeolJong(prev, jamo, ch)
 
     if (step.commit !== '') this.history = [...(step.seed ?? [EMPTY])]
     else this.history.push(prev)
