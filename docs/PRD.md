@@ -1,6 +1,6 @@
 # PRD — Claude Code 한글 입력
 
-상태: develop 에 반영된 프로토타입. 구현 세부·실측 로그는 [SPEC.md](SPEC.md).
+상태: 0.1 공개. 구현 세부·실측 로그는 [SPEC.md](SPEC.md).
 
 ## 문제
 

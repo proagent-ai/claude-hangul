@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/banner.svg" alt="claude-hangul — 한/영 전환 없이 Claude Code 프롬프트에서 한글을 친다" width="100%">
+  <img src="docs/assets/banner.png" alt="claude-hangul — 한/영 전환 없이 Claude Code 프롬프트에서 한글을 친다" width="100%">
 </p>
 
 <p align="center">
@@ -9,7 +9,7 @@
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   <img alt="Claude Code 2.1.287+" src="https://img.shields.io/badge/Claude%20Code-2.1.287%2B-d97757">
-  <a href="https://github.com/proagent-ai/claude-hangul/releases"><img alt="version" src="https://img.shields.io/github/package-json/v/proagent-ai/claude-hangul?filename=.claude-plugin%2Fplugin.json&label=plugin"></a>
+  <img alt="version" src="https://img.shields.io/github/package-json/v/proagent-ai/claude-hangul?filename=.claude-plugin%2Fplugin.json&label=plugin">
   <img alt="layouts" src="https://img.shields.io/badge/%EB%91%90%EB%B2%8C%EC%8B%9D%20%C2%B7%20390%20%C2%B7%20%EC%B5%9C%EC%A2%85-supported-2ea44f">
 </p>
 
@@ -21,7 +21,21 @@ Claude Code의 **mod**(함수 훅 플러그인) 기능으로 프롬프트 입력
 두벌식, 세벌식 390, 세벌식 최종을 친다.
 한/영 전환 키를 누르지 않아도 한글 단어는 한글로, 영어·숫자·기호는 친 그대로 남는다.
 
-원격 터미널(SSH), 태블릿 외장 키보드, IME가 프롬프트까지 오지 않는 환경을 위해 만들었다.
+<p align="center">
+  <img src="docs/assets/demo.gif" alt="OS 입력기로 fetchUser 를 치다 한/영이 꼬이는 장면과, claude-hangul 세벌식 390으로 'fetchUser 함수에 한글 주석 달아줘' 를 전환 없이 치는 장면" width="100%">
+</p>
+
+## 왜 만들었나
+
+Claude Code에 일을 시키면 한 줄에 한글 요청과 영어 코드가 섞인다.
+`fetchUser 함수에 한글 주석 달아줘` 한 줄에 한/영 전환이 두 번이다.
+
+- **한/영 전환이 꼬인다.** `fetchUser` 가 `ㄹㄷㅅ초ㅕㄴㄷㄱ` 이 되고, 고쳐 치면 `함수에` 가 `gkatndp` 가 된다.
+- **macOS 전환 키가 씹힌다.** 누른 줄 알았는데 안 바뀌어 있다.
+- **모바일에는 세벌식이 없다.** iPhone · iPad · Android 기본 키보드는 세벌식을 지원하지 않는다. 외장 키보드로 SSH 접속해 Claude Code를 쓰는 세벌식 사용자는 칠 방법이 없었다.
+
+claude-hangul은 OS 입력기를 영어에 둔 채로 Claude Code 안에서 직접 한글을 조합한다.
+코드는 친 그대로, 한글은 한글로. 전환 키를 누를 일이 없다.
 
 제품 요구는 [docs/PRD.md](docs/PRD.md), 구현 근거는 [docs/SPEC.md](docs/SPEC.md).
 
@@ -36,6 +50,19 @@ Claude Code 안에서:
 
 새 버전은 `claude plugin update hangul@proagent` 후 `/reload-plugins`.
 Claude Code 2.1.287 이상.
+
+### 모바일에서 세벌식으로
+
+iPad · Android 태블릿 + 외장 키보드로 Mac이나 서버에 SSH 접속해 Claude Code를 쓰는 경우.
+
+1. 태블릿 입력 언어를 **영어**로 둔다. 한글 입력은 claude-hangul이 맡는다.
+2. 외장 키보드의 언어 전환 단축키를 끈다. 실수로 눌러도 한글 IME로 넘어가지 않게.
+3. 한글 폰트를 보여 주는 터미널 앱을 쓴다.
+4. 접속한 쪽의 locale을 UTF-8로 둔다.
+5. Claude Code에서 `/hangul 390` (또는 `/hangul final`).
+
+원격 지연으로 키가 몇 개씩 묶여 와도 한 글자씩 친 것으로 조합한다.
+Claude Code 프롬프트에서만 동작하고, 셸이나 다른 프로그램 입력은 건드리지 않는다.
 
 ### 개발
 
