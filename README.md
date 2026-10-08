@@ -151,7 +151,7 @@ npx -p typescript@5.9.3 tsc -p .
 
 ## 기여
 
-이슈와 PR 환영한다. 작업은 `develop` 브랜치에서 하고, PR 전에 위 [테스트](#테스트)를 돌린다.
+이슈와 PR 환영한다. 다음 할 일은 [docs/ROADMAP.md](docs/ROADMAP.md). 작업은 `develop` 브랜치에서 하고, PR 전에 위 [테스트](#테스트)를 돌린다.
 키 배열을 고칠 때는 `core/layout-data.ts` 를 직접 고치지 말고 `tools/gen-layout.mjs` 로 다시 만든다.
 
 ## 감사
