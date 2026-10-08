@@ -1,6 +1,6 @@
 # PRD — Claude Code 한글 입력
 
-상태: develop 에 반영된 프로토타입. 구현 세부·실측 로그는 [SPEC.md](../SPEC.md).
+상태: develop 에 반영된 프로토타입. 구현 세부·실측 로그는 [SPEC.md](SPEC.md).
 
 ## 문제
 
@@ -85,4 +85,4 @@ Claude Code 2.1.289 샌드박스에서 플러그인 로드, `/hangul`, 두벌식
 ## 관련 문서
 
 - [README.md](../README.md) — 설치와 명령
-- [SPEC.md](../SPEC.md) — 키 표 출처, 훅 페이로드, 실측 로그
+- [SPEC.md](SPEC.md) — 키 표 출처, 훅 페이로드, 실측 로그
