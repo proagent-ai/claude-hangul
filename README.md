@@ -3,6 +3,10 @@
 </p>
 
 <p align="center">
+  <img alt="Built as a Claude Code mod" src="https://img.shields.io/badge/built%20as%20a-Claude%20Code%20mod-d97757?style=for-the-badge">
+</p>
+
+<p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   <img alt="Claude Code 2.1.287+" src="https://img.shields.io/badge/Claude%20Code-2.1.287%2B-d97757">
   <a href="https://github.com/proagent-ai/claude-hangul/releases"><img alt="version" src="https://img.shields.io/github/package-json/v/proagent-ai/claude-hangul?filename=.claude-plugin%2Fplugin.json&label=plugin"></a>
@@ -11,7 +15,10 @@
 
 # claude-hangul
 
-Claude Code 프롬프트에서 OS 한글 IME 없이 두벌식, 세벌식 390, 세벌식 최종을 친다.
+> **Claude Code mod 하나로 만든 한글 입력기.** OS IME 없이, 한/영 전환 없이.
+
+Claude Code의 **mod**(함수 훅 플러그인) 기능으로 프롬프트 입력창에 한글 조합기를 직접 꽂았다.
+두벌식, 세벌식 390, 세벌식 최종을 친다.
 한/영 전환 키를 누르지 않아도 한글 단어는 한글로, 영어·숫자·기호는 친 그대로 남는다.
 
 원격 터미널(SSH), 태블릿 외장 키보드, IME가 프롬프트까지 오지 않는 환경을 위해 만들었다.
@@ -53,6 +60,34 @@ claude --plugin-dir .
 상태줄은 `한 두벌식`, `한 세벌식 390`, `한 세벌식 최종` 이다.
 
 시작 레이아웃은 `HANGUL_LAYOUT=2|390|final`. 세벌식 역순 확정은 `HANGUL_SEBEOL_ORDER=strict`.
+
+## Claude Code mod로 만들었다
+
+OS 입력기를 건드리지 않는다. Claude Code가 키 입력을 mod에 넘겨주고, mod가 조합한 결과를 돌려준다.
+훅 4개와 상태줄 하나가 전부다 ([`hooks/register.tsx`](hooks/register.tsx)).
+
+```
+ 키 입력 ─▶ prompt.edit ─▶ HangulEditor ─▶ 조합된 프롬프트
+                              │
+ /hangul ─▶ command.run ──────┤  레이아웃 전환
+ 엔터    ─▶ prompt.submit ────┘  조합 중인 글자 확정
+ 시작    ─▶ session.start       /hangul 등록, 상태줄 `한 두벌식`
+```
+
+```ts
+on('prompt.edit', async ($, e, next) => {
+  const answer = editor.edit(editOf(e))
+  return answer.kind === 'pass' ? next(e) : answer.box  // 조합했으면 키를 소비
+})
+```
+
+- **`prompt.edit`** — 키 하나마다 들어온다. 한글이면 조합해서 돌려주고, 아니면 `next(e)` 로 넘긴다.
+- **`prompt.submit`** — 보내기 직전 조합 중인 음절을 확정한다.
+- **`command.run`** + **`$.command.register`** — `/hangul` 슬래시 명령.
+- **`$.ui.status`** — 상태줄의 `한 세벌식 390`.
+
+조합 코어 `core/` 는 Claude Code API를 모르는 순수 TypeScript라서 다른 곳에도 그대로 쓸 수 있다.
+mod는 Claude Code early access API라 릴리스마다 바뀔 수 있다.
 
 ## 한글과 그 밖의 글자
 
