@@ -31,7 +31,7 @@ github gitlab bitbucket google ai ml llm gpt rag mcp nlp ocr tts stt api apis sd
 js ts jsx tsx py rb rs go md mdx gh gl git svn npm npx pnpm yarn bun deno node nvm pip uv brew apt yum
 ls cp mv rm mkdir rmdir chmod chown cat grep sed awk curl wget ssh scp rsync tar zip unzip gzip gz tgz make cmake gcc clang llvm
 vim vi nvim nano emacs tmux zsh bash sh fish sudo su ps kill top htop df du env cron jq yq fd rg fzf bat
-url urls uri dns ssh ssl tls tcp udp http https ftp sftp smtp imap ws wss rest grpc rpc graphql jwt oauth sso otp mfa saml ldap
+www url urls uri dns ssh ssl tls tcp udp http https ftp sftp smtp imap ws wss rest grpc rpc graphql jwt oauth sso otp mfa saml ldap
 html css scss sass less xml json jsonl yaml yml toml ini csv tsv pdf png jpg jpeg gif svg webp ico mp3 mp4 wav mov txt log logs
 sql nosql orm crud cdn vpc iam aws gcp gke eks ecs ec2 rds sqs sns ses kms k8s helm docker podman nginx redis kafka mysql postgres
 dev prod stg staging env envs cfg conf config tmp temp app apps bin lib libs src dist build builds test tests spec specs doc docs
@@ -99,6 +99,11 @@ export function decide(layout: Layout, keys: string, hangul: string): 'ko' | 'en
   const lower = keys.toLowerCase()
   // 세벌식은 숫자 키가 자모다. 숫자가 섞인 키는 한글로 보되, k8s 같은 개발 용어만 영어.
   if (!/^[A-Za-z]+$/.test(keys)) return /^[a-z0-9]+$/.test(lower) && DEV.has(lower) ? 'en' : 'ko'
+  // 자모만인 말(ㅋㅋ ㅎㅎ): 내 기록에서 그 키를 영어로 훨씬 많이 썼거나 개발 용어면 영어.
+  if (/^[ㄱ-ㅣ]+$/.test(hangul)) {
+    const e = pEng.get(lower) ?? 0, k = pKor.get(hangul) ?? 0
+    return e > 3 * k || DEV.has(lower) ? 'en' : 'ko'
+  }
   // 1. 숫자·기호뿐(세벌식 시프트 치환 J → 4)이면 그대로 둔다. 세벌식에서 숫자를 칠 유일한 방법이다.
   //    390 UI → 78 처럼 약어와 겹치는 숫자도 숫자 쪽을 지킨다.
   if (![...hangul].some(isSyl)) return 'ko'

@@ -167,6 +167,10 @@ export interface ComposerOptions {
   readonly keepKeys?: (layout: LayoutId, keys: string, hangul: string) => boolean
 }
 
+/** 반복해서 자모만으로 쓰는 말(ㅋㅋ ㅎㅎ ㅠㅠ ㄷㄷ …)에 쓰이는 자모와, 흔한 자모 줄임말. */
+const REPEATABLE_JAMO = new Set('ㅋㅎㅠㅜㄷㅇㄴㄱㅂㅅㅈㅊ')
+const JAMO_ABBREVIATIONS = new Set(['ㅇㅋ', 'ㅊㅋ', 'ㅅㄱ', 'ㄱㅅ', 'ㅈㅅ', 'ㅎㅇ', 'ㅂㅇ', 'ㄹㅇ', 'ㅇㅈ'])
+
 function isHangulRun(text: string): boolean {
   if (text === '') return true
   for (const ch of text) {
@@ -221,6 +225,11 @@ export class HangulComposer {
    * closing 이면 단어가 끝난 것. 완성 음절만 아니면 친 키를 돌려준다.
    */
   private replay(keys: string, closing: boolean): string {
+    // ㅋㅋ·ㅠㅠ 처럼 자모만으로 쓰는 말은 단어가 끝날 때 자모로 낸다. 세벌식 ㅋㅋ 는 숫자 키(00)라 숫자 규칙보다 먼저 본다.
+    if (closing) {
+      const jamo = this.jamoWord(keys)
+      if (jamo !== undefined && this.options.keepKeys?.(this.layout.id, keys, jamo) !== true) return jamo
+    }
     if (/^\d+$/.test(keys)) return keys
     let syl: Syl = EMPTY
     let text = ''
@@ -248,6 +257,19 @@ export class HangulComposer {
     const word = text + tail
     if (closing && word !== keys && this.options.keepKeys?.(this.layout.id, keys, word) === true) return keys
     return word
+  }
+
+  /** keys 가 자모만인 말(같은 자모 반복, 흔한 줄임말)이면 그 자모 문자열. 받침 키·기호 키가 섞이면 아니다. */
+  private jamoWord(keys: string): string | undefined {
+    if (keys.length < 2) return undefined
+    let out = ''
+    for (const ch of keys) {
+      const def = this.layout.map[ch]
+      if (def === undefined || def.role === 'lit' || def.role === 'jong') return undefined
+      out += def.jamo
+    }
+    const repeated = REPEATABLE_JAMO.has(out[0]!) && [...out].every(j => j === out[0])
+    return repeated || JAMO_ABBREVIATIONS.has(out) ? out : undefined
   }
 
   private step(syl: Syl, def: Exclude<KeyDef, { role: 'lit' }>, ch: string, reorder: boolean): Step {

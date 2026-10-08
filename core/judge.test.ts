@@ -48,4 +48,22 @@ describe('단어 판정 (core/judge)', () => {
     expect(s3('mfskgw')).toBe('한글')
     expect(d2('gksrmf')).toBe('한글')
   })
+
+  test('자모만인 말: 390 00 → ㅋㅋ, 000 → ㅋㅋㅋ, 55 → ㅠㅠ, 99 → ㅜㅜ, mm → ㅎㅎ', () => {
+    expect(['00', '000', '55', '99', 'mm'].map(s3)).toEqual(['ㅋㅋ', 'ㅋㅋㅋ', 'ㅠㅠ', 'ㅜㅜ', 'ㅎㅎ'])
+  })
+
+  test('자모만인 말: 두벌식 zz → ㅋㅋ, gg → ㅎㅎ, bb → ㅠㅠ, dz → ㅇㅋ, zzzz → ㅋㅋㅋㅋ', () => {
+    expect(['zz', 'gg', 'bb', 'dz', 'zzzz'].map(d2)).toEqual(['ㅋㅋ', 'ㅎㅎ', 'ㅠㅠ', 'ㅇㅋ', 'ㅋㅋㅋㅋ'])
+  })
+
+  test('반복 자모가 아닌 숫자·영어는 그대로: 390 390·J, 두벌식 hello·xyz', () => {
+    expect([s3('390'), s3('J'), d2('hello'), d2('xyz')]).toEqual(['390', '4', 'hello', 'xyz'])
+  })
+
+  test('learn 에서 영어로 더 많이 쓴 키면 자모로 바꾸지 않는다: 두벌식 gg', () => {
+    init({ eng: [['gg', 10]], kor: [] })
+    const c = new HangulComposer(LAYOUTS.dubeolsik, { keepKeys: (l, k, h) => decide(l, k, h) === 'en' })
+    expect(c.typeAll('gg ').slice(0, -1)).toBe('gg')
+  })
 })

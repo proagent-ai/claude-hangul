@@ -53,9 +53,10 @@ export function countPrompts(prompts: Iterable<string>): Personal & { prompts: n
   for (const t of unique) {
     if ((heads.get(t.slice(0, 40)) ?? 0) > 3) continue
     n++
-    for (const tok of t.split(/[^A-Za-z0-9가-힣]+/)) {
+    for (const tok of t.split(/[^A-Za-z0-9가-힣ㄱ-ㅣ]+/)) {
       if (/^[A-Za-z][A-Za-z0-9]*$/.test(tok)) eng.set(tok, (eng.get(tok) ?? 0) + 1)
-      else if (/^[가-힣]+$/.test(tok)) kor.set(tok, (kor.get(tok) ?? 0) + 1)
+      // 한글 어절과 ㅋㅋ·ㅠㅠ 같은 자모 말
+      else if (/^[가-힣ㄱ-ㅣ]+$/.test(tok)) kor.set(tok, (kor.get(tok) ?? 0) + 1)
     }
   }
   for (const w of eng.keys()) if (w.length > MAX_ENG_LENGTH) eng.delete(w)
