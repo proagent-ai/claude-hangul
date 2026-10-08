@@ -318,4 +318,28 @@ describe('HangulEditor (prompt.edit 어댑터)', () => {
     b.type('x hel')
     expect(b.editor.commitForSubmit('Q' + b.text)).toBe('Qx 녀l')
   })
+
+  test('열린 영어 단어 밖에서 / 를 쳐도 그 단어는 친 키로 돌아간다', () => {
+    const b = newBox('sebeolsik-390')
+    b.type('x hel')
+    b.cursor = 0
+    b.type('/')
+    expect(b.text).toBe('/x hel')
+  })
+
+  test('열린 영어 단어 안에서 ← 는 화면과 같은 자리(l 앞)에 선다', () => {
+    const b = newBox('sebeolsik-390')
+    b.type('hel')
+    expect(b.text).toBe('녀l')
+    b.edit({ start: 1, end: 1, inputText: '', key: { key: 'left' } })
+    expect(b.text).toBe('hel')
+    expect(b.cursor).toBe(2)
+  })
+
+  test('열린 영어 단어의 마지막 글자를 선택해 바꾸면 그 글자만 바뀐다', () => {
+    const b = newBox('sebeolsik-390')
+    b.type('hel')
+    b.edit({ start: 1, end: 2, inputText: 'Z' })
+    expect(b.text).toBe('heZ')
+  })
 })

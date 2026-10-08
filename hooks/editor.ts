@@ -108,15 +108,17 @@ export class HangulEditor {
     const isSingle = e.start === e.end && SINGLE_KEY.test(e.inputText)
     if (!isSingle) return this.commitAndPass(e)
 
+    let sealed = false
     if (composing && e.start !== runEnd) {
       // 조합 구간 끝이 아닌 곳에서 입력: 열린 단어를 확정(한글이 아니면 친 키로)하고, 이 키는 새 조합의 시작.
       e = this.sealEdit(e)
       composing = false
+      sealed = true
     }
     const head = e.text.slice(0, e.start) + e.inputText
     if (isSlashCommandName(head) || isHangulCommand(head)) {
       if (composing) this.commit()
-      return { kind: 'pass' }
+      return sealed ? { kind: 'pass', edit: e } : { kind: 'pass' }
     }
 
     const r = this.composer.feed(e.inputText)
@@ -183,17 +185,30 @@ export class HangulEditor {
     return sent.slice(0, this.anchor) + closed + sent.slice(this.anchor + shown.length)
   }
 
-  /** 열린 단어를 e.text 안에서 확정하고, 바뀐 길이만큼 그 뒤쪽 위치만 옮긴 편집을 돌려준다. */
+  /**
+   * 열린 단어를 e.text 안에서 확정하고, 위치를 확정문 기준으로 옮긴 편집을 돌려준다.
+   * 단어 앞은 그대로, 단어 뒤는 길이 차만큼. 단어 안은 화면(녀l)과 확정문(hel)이 같은 앞·뒤 부분이면
+   * 그 글자에 맞추고, 겹치지 않는 가운데(녀 ↔ he)는 시작은 앞으로, 끝은 뒤로 넓혀 그 덩어리 전체를 덮는다.
+   */
   private sealEdit(e: Edit): Edit {
     const anchor = this.anchor
-    const runEnd = anchor + this.shown.length
+    const shown = this.shown
+    const runEnd = anchor + shown.length
     const text = this.seal(e.text)
     const shift = text.length - e.text.length
     if (shift === 0) return { ...e, text }
-    const closedEnd = runEnd + shift
-    // 앵커 이전은 그대로, 단어 뒤는 shift 만큼, 단어 안은 앵커 기준 거리 그대로(확정문 끝을 넘지 않게).
-    const move = (p: number) => (p <= anchor ? p : p >= runEnd ? p + shift : Math.min(p, closedEnd))
-    return { ...e, text, start: move(e.start), end: move(e.end), cursor: move(e.cursor) }
+    const closed = text.slice(anchor, runEnd + shift)
+    let pre = 0
+    while (pre < shown.length && pre < closed.length && shown[pre] === closed[pre]) pre++
+    let suf = 0
+    while (suf < shown.length - pre && suf < closed.length - pre && shown[shown.length - 1 - suf] === closed[closed.length - 1 - suf]) suf++
+    const move = (p: number, wide: 'lo' | 'hi') => {
+      if (p <= anchor + pre) return p
+      if (p >= runEnd - suf) return p + shift
+      return wide === 'lo' ? anchor + pre : runEnd - suf + shift
+    }
+    const start = move(e.start, 'lo')
+    return { ...e, text, start, end: e.end === e.start ? start : move(e.end, 'hi'), cursor: move(e.cursor, 'hi') }
   }
 
   private commitAndPass(e: Edit): Answer {

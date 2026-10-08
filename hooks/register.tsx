@@ -60,7 +60,7 @@ export const register: Register = on => {
     if (trace) {
       $.ui.log(
         // keyField: 엔진이 key 를 빼는지(absent) null 로 주는지 가린다. 원격 키 묶음 처리가 이 값에 달렸다.
-        `prompt.edit ${JSON.stringify({ keyField: 'key' in e ? (e.key === null ? 'null' : 'set') : 'absent', key: e.key ?? null, inputText: e.inputText, len: e.inputText.length, start: e.start, end: e.end, cursor: e.cursor, text: e.text })}`,
+        `prompt.edit ${JSON.stringify({ keyField: !('key' in e) ? 'absent' : e.key === undefined ? 'undefined' : e.key === null ? 'null' : 'set', key: e.key ?? null, inputText: e.inputText, len: e.inputText.length, start: e.start, end: e.end, cursor: e.cursor, text: e.text })}`,
         { to: 'debug' },
       )
     }
