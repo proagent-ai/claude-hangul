@@ -96,29 +96,33 @@ const isSyl = (c: string) => c >= '가' && c <= '힣'
 /** hangul 은 keys 를 조합한 결과(keys 와 다를 때만 부른다). 'en' 이면 친 키로 되돌린다. */
 export function decide(layout: Layout, keys: string, hangul: string): 'ko' | 'en' {
   if (/[A-Za-z]/.test(hangul)) return 'en' // letters left unconverted: not a Korean word
-  const alpha = /^[A-Za-z]+$/.test(keys)
-  if (!alpha) return 'ko' // digits/symbols in the keys: 세벌식 Korean
   const lower = keys.toLowerCase()
-  // 1. Output is not Hangul at all, or letters produced punctuation (세벌식 shifted letters)
-  let syl = 0
-  for (const c of hangul) if (isSyl(c)) syl++
-  if (syl === 0) return 'en'
-  if (/[^0-9가-힣]/.test(hangul)) return 'en'
+  // 세벌식은 숫자 키가 자모다. 숫자가 섞인 키는 한글로 보되, k8s 같은 개발 용어만 영어.
+  if (!/^[A-Za-z]+$/.test(keys)) return /^[a-z0-9]+$/.test(lower) && DEV.has(lower) ? 'en' : 'ko'
+  // 1. 숫자·기호뿐(세벌식 시프트 치환 J → 4)이면 그대로 둔다. 세벌식에서 숫자를 칠 유일한 방법이다.
+  //    390 UI → 78 처럼 약어와 겹치는 숫자도 숫자 쪽을 지킨다.
+  if (![...hangul].some(isSyl)) return 'ko'
+  // 앞뒤에 붙은 숫자·기호(한글! · 한4)는 떼고 한글 부분만 본다. 음절 사이에 끼면(GitHub → /머'두) 영어.
+  const body = hangul.replace(/^[^가-힣]+|[^가-힣]+$/g, '')
+  if (/[^가-힣]/.test(body)) return 'en'
+  const edged = body !== hangul
   // 2. Personal history
-  const e = pEng.get(lower) ?? 0, k = pKor.get(hangul) ?? 0
+  const e = pEng.get(lower) ?? 0, k = pKor.get(body) ?? 0
   if (e > 0 && k === 0) return 'en'
   if (k > 0 && e === 0) return 'ko'
   if (e > 0 && k > 0) return e > 3 * k ? 'en' : 'ko'
   // 3. Off-repertoire syllable → never real Korean
-  for (const c of hangul) if (isSyl(c) && !KSSET.has(c)) return 'en'
+  for (const c of body) if (!KSSET.has(c)) return 'en'
   // 4. 두벌식: shift on a key that has no shifted jamo
   if (layout === 'dubeolsik' && /[ABCDFGHIJKLMNSUVXYZ]/.test(keys)) return 'en'
+  // 기호가 붙은 단어는 키 쪽 사전 비교가 맞지 않으니(키에 시프트 글자가 섞임) 한글로 둔다.
+  if (edged) return 'ko'
   // 5. Very common Korean word beats everything general
-  if (KO_STRONG.has(hangul)) return 'ko'
+  if (KO_STRONG.has(body)) return 'ko'
   // 6. Curated developer / short English vocabulary
   if (DEV.has(lower)) return 'en'
   // 7. Other common Korean words veto dictionary / n-gram guesses
-  if (KO.has(hangul)) return 'ko'
+  if (KO.has(body)) return 'ko'
   if (lower.length >= 4) {
     const t = tierOf(lower)
     if (t !== undefined) return 'en'

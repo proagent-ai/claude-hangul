@@ -357,4 +357,15 @@ describe('HangulEditor (prompt.edit 어댑터)', () => {
     b.type('/help')
     expect(b.text).toBe('/help')
   })
+
+  test('판정이 영어로 되돌린 단어(래가 → fork) 안에서 ← 는 같은 비율 자리(fo|rk)에 선다', () => {
+    const editor = new HangulEditor(new HangulComposer(LAYOUTS.dubeolsik, { keepKeys: (_l, k) => k === 'fork' }))
+    editor.setOn(true)
+    const b = new Box(editor)
+    b.type('fork')
+    expect(b.text).toBe('래가')
+    b.edit({ start: 1, end: 1, inputText: '', key: { key: 'left' } })
+    expect(b.text).toBe('fork')
+    expect(b.cursor).toBe(2)
+  })
 })

@@ -7,6 +7,9 @@ const HANGUL = /[가-힣]/g
 const LATIN = /[A-Za-z]/g
 /** 저장할 개수 상한. 빈도순으로 자른다. $.store 는 4 MiB 까지. */
 const KEEP = { eng: 3000, kor: 20000 }
+/** 한 번만 나온 단어와 24자 넘는 영어 토큰(키·해시 같은 것)은 저장하지 않는다. */
+const MIN_COUNT = 2
+const MAX_ENG_LENGTH = 24
 
 /** JSONL 한 줄이 사람이 입력창에 친 프롬프트면 그 글, 아니면 undefined. */
 export function promptOf(line: string): string | undefined {
@@ -33,6 +36,12 @@ export function promptOf(line: string): string | undefined {
   return t
 }
 
+/** $.store 에 남은 값이 learn 결과 모양인지. 깨진 값이면 일반 규칙만 쓴다. */
+export function isPersonal(v: unknown): v is Personal {
+  const ok = (a: unknown) => Array.isArray(a) && a.every(x => Array.isArray(x) && typeof x[0] === 'string' && typeof x[1] === 'number')
+  return typeof v === 'object' && v !== null && ok((v as Personal).eng) && ok((v as Personal).kor)
+}
+
 /** 프롬프트들에서 영어 단어·한글 어절 빈도를 센다. 같은 글과 앞 40자가 4번 이상 반복되는 템플릿은 뺀다. */
 export function countPrompts(prompts: Iterable<string>): Personal & { prompts: number } {
   const unique = [...new Set(prompts)]
@@ -49,6 +58,7 @@ export function countPrompts(prompts: Iterable<string>): Personal & { prompts: n
       else if (/^[가-힣]+$/.test(tok)) kor.set(tok, (kor.get(tok) ?? 0) + 1)
     }
   }
-  const top = (m: Map<string, number>, k: number) => [...m].sort((x, y) => y[1] - x[1]).slice(0, k)
+  for (const w of eng.keys()) if (w.length > MAX_ENG_LENGTH) eng.delete(w)
+  const top = (m: Map<string, number>, k: number) => [...m].filter(([, c]) => c >= MIN_COUNT).sort((x, y) => y[1] - x[1]).slice(0, k)
   return { eng: top(eng, KEEP.eng), kor: top(kor, KEEP.kor), prompts: n }
 }

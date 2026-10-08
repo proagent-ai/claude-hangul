@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { countPrompts, promptOf } from './learn'
+import { countPrompts, isPersonal, promptOf } from './learn'
 
 const user = (content: unknown, extra: Record<string, unknown> = {}) => JSON.stringify({ type: 'user', message: { role: 'user', content }, ...extra })
 
@@ -21,11 +21,24 @@ describe('/hangul learn: 기록에서 사람이 친 한글 프롬프트만 고�
     expect(promptOf('not json "type":"user"')).toBeUndefined()
   })
 
-  test('영어 단어와 한글 어절을 세고, 같은 글은 한 번만 센다', () => {
-    const r = countPrompts(['gh pr 열어줘', 'gh pr 열어줘', 'gh 이슈 확인'])
-    expect(r.prompts).toBe(2)
-    expect(r.eng).toEqual([['gh', 2], ['pr', 1]])
-    expect(r.kor).toEqual([['열어줘', 1], ['이슈', 1], ['확인', 1]])
+  test('영어 단어와 한글 어절을 세고, 같은 글은 한 번만 센다. 한 번만 나온 단어는 저장하지 않는다', () => {
+    const r = countPrompts(['gh pr 열어줘', 'gh pr 열어줘', 'gh 이슈 확인', 'pr 이슈 닫아줘'])
+    expect(r.prompts).toBe(3)
+    expect(r.eng).toEqual([['gh', 2], ['pr', 2]])
+    expect(r.kor).toEqual([['이슈', 2]])
+  })
+
+  test('24자 넘는 영어 토큰(키·해시 같은 것)은 저장하지 않는다', () => {
+    const token = 'sk' + 'a'.repeat(30)
+    const r = countPrompts([`${token} 넣어줘`, `${token} 다시 넣어줘`])
+    expect(r.eng).toEqual([])
+  })
+
+  test('저장된 값이 깨져 있으면 learn 결과로 쓰지 않는다', () => {
+    expect(isPersonal({ eng: [['gh', 2]], kor: [] })).toBe(true)
+    expect(isPersonal({ eng: 'x', kor: [] })).toBe(false)
+    expect(isPersonal({ eng: [[1, 'gh']], kor: [] })).toBe(false)
+    expect(isPersonal(null)).toBe(false)
   })
 
   test('앞 40자가 4번 넘게 반복되는 템플릿은 뺀다', () => {

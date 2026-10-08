@@ -5,11 +5,10 @@ import type { EngineInterface, PromptEditInput, Register } from 'claude-code'
 
 import { HangulComposer } from '../core/composer'
 import { decide, init } from '../core/judge'
-import type { Personal } from '../core/judge'
 import { LAYOUTS, parseLayout } from '../core/layouts'
 import { HangulEditor } from './editor'
 import type { Edit } from './editor'
-import { countPrompts, promptOf } from './learn'
+import { countPrompts, isPersonal, promptOf } from './learn'
 
 const DESCRIPTION =
   'Turn Hangul (dubeolsik / sebeolsik 390 / sebeolsik final) input on or off. Args: on | off | 2 | 390 | final | learn | forget'
@@ -34,54 +33,51 @@ function applyHangul(ed: HangulEditor, argRaw: string): { text: string; touchSta
 }
 
 /**
- * 이 맥의 대화 기록(<설정 폴더>/projects 아래 폴더별 .jsonl)에서 직접 친 한글 프롬프트를 세어 $.store 에 둔다.
- * 사용자 줄만 grep 으로 걸러 읽는다(파일 크기 제한 없음). grep 을 못 쓰면 4 MiB 이하 파일만 직접 읽는다.
+ * 이 맥의 대화 기록(<설정 폴더>/projects 아래 .jsonl)에서 직접 친 한글 프롬프트를 세어 $.store 에 둔다.
+ * grep 으로 프롬프트 줄만 골라 읽는다(파일 크기 제한 없음). grep 을 못 쓰면 4 MiB 이하 파일만 직접 읽는다.
  */
 async function learn($: EngineInterface): Promise<string> {
-  const config = (await $.env.get('CLAUDE_CONFIG_DIR')) || `${await $.env.get('HOME')}/.claude`
+  const home = await $.env.get('HOME')
+  const config = (await $.env.get('CLAUDE_CONFIG_DIR')) || (home ? `${home}/.claude` : '')
+  if (config === '') return 'cannot find the Claude Code config directory (HOME and CLAUDE_CONFIG_DIR are unset)'
   const root = `${config}/projects`
   if (!(await $.fs.exists(root))) return `no transcripts under ${root}`
-  const files: { path: string; size: number }[] = []
-  for (const dir of await $.fs.list(root)) {
-    if (dir.kind !== 'dir') continue
-    for (const f of await $.fs.list(`${root}/${dir.name}`)) {
-      if (f.kind === 'file' && f.name.endsWith('.jsonl')) files.push({ path: `${root}/${dir.name}/${f.name}`, size: f.size })
-    }
-  }
   const prompts: string[] = []
+  const take = (line: string) => {
+    const t = promptOf(line)
+    if (t !== undefined) prompts.push(t)
+  }
   let skipped = 0
   try {
+    // 폴더째(-r) 넘겨 인자 길이 한계를 피한다. 서브에이전트 기록은 promptOf 가 뺀다.
+    const argv = ['grep', '-rhF', '--include=*.jsonl', '-e', '"role":"user","content":"', '-e', '"role":"user","content":[{"type":"text"', root]
     let rest = ''
-    for await (const { stream, text } of $.process.spawn({ argv: ['grep', '-h', '"type":"user"', ...files.map(f => f.path)] })) {
+    for await (const { stream, text } of $.process.spawn({ argv })) {
       if (stream !== 'stdout') continue
       const lines = (rest + text).split('\n')
       rest = lines.pop() ?? ''
-      for (const line of lines) {
-        const t = promptOf(line)
-        if (t !== undefined) prompts.push(t)
-      }
+      lines.forEach(take)
     }
-    const t = promptOf(rest)
-    if (t !== undefined) prompts.push(t)
+    take(rest)
   } catch {
     prompts.length = 0
-    for (const f of files) {
-      if (f.size > MAX_READ) {
-        skipped++
-        continue
-      }
-      const text = await $.fs.read(f.path)
-      for (const line of text.split('\n')) {
-        const t = promptOf(line)
-        if (t !== undefined) prompts.push(t)
+    for (const dir of await $.fs.list(root)) {
+      if (dir.kind !== 'dir') continue
+      for (const f of await $.fs.list(`${root}/${dir.name}`)) {
+        if (f.kind !== 'file' || !f.name.endsWith('.jsonl')) continue
+        const text = f.size > MAX_READ ? undefined : await $.fs.read(`${root}/${dir.name}/${f.name}`).catch(() => undefined)
+        if (text === undefined) skipped++
+        else text.split('\n').forEach(take)
       }
     }
   }
   const counted = countPrompts(prompts)
+  // 아무것도 못 읽었으면 이전에 배운 것을 지우지 않는다.
+  if (counted.prompts === 0) return 'found no Korean prompts to learn from; kept what was learned before'
   await $.store.set(LEARNED, { eng: counted.eng, kor: counted.kor, prompts: counted.prompts, at: new Date().toISOString() })
   init(counted)
-  const note = skipped > 0 ? `, ${skipped} large files skipped` : ''
-  return `learned from ${counted.prompts} prompts in ${files.length} transcripts: ${counted.eng.length} English words, ${counted.kor.length} Korean words${note}`
+  const note = skipped > 0 ? `, ${skipped} transcripts skipped` : ''
+  return `learned from ${counted.prompts} prompts: ${counted.eng.length} English words, ${counted.kor.length} Korean words${note}`
 }
 
 function editOf(e: PromptEditInput): Edit {
@@ -95,8 +91,8 @@ export const register: Register = on => {
     trace = (await $.env.get('HANGUL_TRACE')) === '1'
     const layout = parseLayout(wanted === undefined || wanted === '' ? undefined : wanted) ?? LAYOUTS.dubeolsik
     // strict 만 libhangul 기본(역순 확정). 그 외·미설정은 SPEC 4.2 의 순서 무관.
-    const learned = (await $.store.get(LEARNED)) as Personal | undefined
-    init(learned ?? { eng: [], kor: [] })
+    const learned = await $.store.get(LEARNED)
+    init(isPersonal(learned) ? learned : { eng: [], kor: [] })
     // 단어가 끝날 때 친 키가 영어로 더 그럴듯하면 키로 되돌린다(core/judge).
     const keepKeys = (id: typeof layout.id, keys: string, hangul: string) => decide(id, keys, hangul) === 'en'
     editor = new HangulEditor(new HangulComposer(layout, { autoReorder: order !== 'strict', keepKeys }))

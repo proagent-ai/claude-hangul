@@ -203,9 +203,13 @@ export class HangulEditor {
     while (pre < shown.length && pre < closed.length && shown[pre] === closed[pre]) pre++
     let suf = 0
     while (suf < shown.length - pre && suf < closed.length - pre && shown[shown.length - 1 - suf] === closed[closed.length - 1 - suf]) suf++
+    // 겹치는 앞·뒤가 없으면(판정이 래가 → fork 로 되돌린 단어) 글자 수 비율로 옮긴다: 래|가 → fo|rk.
+    const mid = shown.length - pre - suf
+    const midClosed = closed.length - pre - suf
     const move = (p: number, wide: 'lo' | 'hi') => {
       if (p <= anchor + pre) return p
       if (p >= runEnd - suf) return p + shift
+      if (pre === 0 && suf === 0) return anchor + Math.round(((p - anchor) * midClosed) / mid)
       return wide === 'lo' ? anchor + pre : runEnd - suf + shift
     }
     const start = move(e.start, 'lo')
