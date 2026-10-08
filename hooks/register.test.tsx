@@ -6,7 +6,8 @@ import type { Engine } from 'claude-code/testing'
 const runHangul = ($: Engine, args = '') =>
   $.command.run({ command: 'hangul', args, origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 90 } })
 
-function standInForEngine(on: On) {
+function standInForEngine(on: On, store: Record<string, unknown> = {}) {
+  mock.store(on, store)
   on('session.start', (_$, e) => ({ cwd: e.cwd }))
   on('command.register', (_$, e) => ({ value: { command: e.name } }))
 }
@@ -58,6 +59,7 @@ test('등록하는 명령은 hangul 하나뿐이다', async ($, on) => {
     return { value: { command: e.name } }
   })
   on('ui.status', () => ({ value: undefined }))
+  mock.store(on)
   mock.env(on, {})
   await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
   expect(names).toEqual(['hangul'])
@@ -84,8 +86,8 @@ test('prompt.submit 은 보낸 텍스트를 그대로 둔다', async ($, on) => 
 })
 
 // 390 hel 은 입력창에 녀l 로 보인다. 입력창에서 보낸 글만 친 키로 되돌린다.
-async function typeOpenWord($: Engine, on: On) {
-  standInForEngine(on)
+async function typeOpenWord($: Engine, on: On, store: Record<string, unknown> = {}) {
+  standInForEngine(on, store)
   on('prompt.edit', (_$, e) => ({ text: e.text.slice(0, e.start) + e.inputText + e.text.slice(e.end), cursor: e.start + e.inputText.length }))
   on('prompt.submit', (_$, e) => ({ text: e.text }))
   mock.env(on, { HANGUL_LAYOUT: '390' })
@@ -111,4 +113,37 @@ test('Remote Control(bridge)에서 온 글은 건드리지 않는다', async ($,
   const text = await typeOpenWord($, on)
   const submitted = await $.prompt.submit({ text, wait: false, origin: { kind: 'bridge' } })
   expect(submitted.text).toBe('녀l')
+})
+
+async function typeWords($: Engine, on: On, keys: string, store: Record<string, unknown> = {}) {
+  await typeOpenWord($, on, store)
+  let text = ''
+  for (const ch of keys) {
+    const key = ch === ' ' ? 'space' : ch
+    const r = await $.prompt.edit({ origin: { kind: 'composer' }, key: { key }, text, cursor: text.length, start: text.length, end: text.length, inputText: ch })
+    text = r.text
+  }
+  return text
+}
+
+test('단어 판정: 390 gh·md 는 영어로, mfskgw(한글)는 한글로 남는다', async ($, on) => {
+  expect(await typeWords($, on, 'gh md mfskgw ')).toBe('gh md 한글 ')
+})
+
+test('/hangul learn 결과가 있으면 개인 빈도로 판정한다: 390 rm 을 해보다 훨씬 많이 썼으면 rm', async ($, on) => {
+  const learned = { 'learn.v1': { eng: [['rm', 30]], kor: [['해', 2]] } }
+  expect(await typeWords($, on, 'rm ', learned)).toBe('rm ')
+})
+
+test('/hangul forget 은 개인 빈도를 지운다', async ($, on) => {
+  const learned = { 'learn.v1': { eng: [['rm', 30]], kor: [] } }
+  await typeOpenWord($, on, learned)
+  const r = await runHangul($, 'forget')
+  expect(r.text).toBe('forgot learned words')
+  let text = ''
+  for (const ch of 'rm ') {
+    const res = await $.prompt.edit({ origin: { kind: 'composer' }, key: { key: ch === ' ' ? 'space' : ch }, text, cursor: text.length, start: text.length, end: text.length, inputText: ch })
+    text = res.text
+  }
+  expect(text).toBe('해 ')
 })

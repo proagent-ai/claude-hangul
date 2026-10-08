@@ -91,6 +91,8 @@ claude --plugin-dir .
 | `/hangul` | 켜기 / 끄기 |
 | `/hangul on` `off` | 명시적으로 켜거나 끈다 |
 | `/hangul 2` `390` `final` | 레이아웃을 바꾸고 켠다 |
+| `/hangul learn` | 이 맥의 Claude Code 대화 기록에서 내가 섞어 쓰는 영어·한글 단어를 배운다 |
+| `/hangul forget` | 배운 단어를 지운다 |
 
 `/hangul` 줄의 인자는 영어 그대로다. `off` 가 한글로 바뀌지 않는다.
 상태줄은 `한 두벌식`, `한 세벌식 390`, `한 세벌식 최종` 이다.
@@ -134,12 +136,35 @@ mod는 Claude Code early access API라 릴리스마다 바뀔 수 있다.
 - 숫자만인 단어(`390`, `123`)는 숫자다. `?` `,` `!` 처럼 표에 없는 기호는 친 문자다.
 - 두벌식 숫자·기호는 친 문자 그대로다.
 - 원격 접속 지연으로 키가 몇 개씩 한 번에 오면, 줄바꿈 없는 ASCII 8글자 이하는 한 글자씩 친 것으로 조합하고 그보다 길면 붙여넣기로 보고 원문 그대로 넣는다. 실제 원격 환경에서의 묶음 크기는 아직 재 보지 않았다([로드맵](docs/ROADMAP.md)).
-- 한 음절로 끝나는 짧은 영어는 한글로 남는다. 두벌식 `to` 는 `새`.
+- 완성 음절뿐이어도 영어 쪽이 더 그럴듯하면 친 키로 돌아간다. 아래 [단어 판정](#단어-판정).
 
 세벌식 시프트 숫자·기호는 레이아웃 표대로 바뀐다. 390 `J K L` 은 `4 5 6`, `B` 는 `!`. 최종 `J` 는 `1`, `B` 는 `?`.
 세벌식은 숫자가 시프트 자리에만 있어 치환하지 않으면 칠 방법이 없다.
 기호 키는 단어의 일부라서, 그 단어가 영어로 판정되면 친 키로 돌아간다. 390 `Hello` 는 `Hello`.
 치환을 끄려면 코드에서 `passthroughLiterals: true`. 명령에는 없다.
+
+## 단어 판정
+
+세벌식에서는 영어도 자주 완성 음절이 된다. `gh` → `느`, `md` → `히`, `https` → `너펀`.
+단어가 끝날 때 두 쪽을 견주어, 영어 쪽이 더 그럴듯하면 친 키로 되돌린다.
+
+- 친 키가 개발 용어(`gh` `pr` `md` `npm` …)나 영어 사전 단어인가
+- 조합된 한글이 흔한 한국어 단어인가 (`그` `해` `개` 는 한글로 둔다)
+- 한국어에 거의 안 쓰는 음절(`햣` `둪`)이 있는가
+
+| | 두벌식 | 세벌식 390·최종 |
+|---|---|---|
+| `gh` | `호` → **`gh`** | `느` → **`gh`** |
+| `pr` | `pr` | `패` → **`pr`** |
+| `md` · `https` | 그대로 | `히` · `너펀` → **`md` · `https`** |
+| `rm` | `그` (한글로 둠) | `해` (한글로 둠) |
+
+`rm` 처럼 흔한 한글과 겹치는 단어는 기본으로 한글이다. **`/hangul learn`** 을 한 번 돌리면 이 맥의 Claude Code 대화 기록에서 내가 직접 친 한글 프롬프트만 골라 영어·한글 단어 빈도를 세고, 그 빈도로 판정한다. 내가 `rm` 을 `해` 보다 훨씬 많이 썼으면 `rm` 이 된다.
+
+- 기록 원문은 저장하지 않는다. 단어 빈도만 이 맥의 플러그인 저장소(`$.store`)에 둔다. 밖으로 나가지 않는다.
+- 다시 돌리면 처음부터 다시 센다. `/hangul forget` 으로 지운다.
+
+판정 데이터는 일반 개발 용어 목록, [SCOWL](http://wordlist.aspell.net) 영어 단어 등급, KS X 1001 음절 집합으로 만들었다. 작성자의 대화 기록은 점수를 재는 데만 썼고 데이터에는 들어가지 않았다. 학습에 쓰지 않은 기록으로 잰 결과, 영어가 영어로 남는 비율이 두벌식 92.7% → 99.0%, 세벌식 79.9% → 96.6%(learn 후 98.3%)였고 한글이 한글로 남는 비율은 99.97–100%였다.
 
 ## 테스트
 
@@ -152,8 +177,8 @@ npx -p typescript@5.9.3 tsc -p .
 
 ## 구성
 
-- `core/` — 조합 상태머신. Claude Code API에 의존하지 않는다.
-- `hooks/` — `prompt.edit` 어댑터와 `/hangul` 등록.
+- `core/` — 조합 상태머신과 단어 판정(`judge.ts`, `judge-data.ts`). Claude Code API에 의존하지 않는다.
+- `hooks/` — `prompt.edit` 어댑터, `/hangul` 등록, `/hangul learn` 기록 집계(`learn.ts`).
 - `tools/gen-layout.mjs` — libhangul 키보드 XML로 `core/layout-data.ts` 를 만든다.
 
 ## 기여
@@ -165,6 +190,7 @@ npx -p typescript@5.9.3 tsc -p .
 
 - [libhangul](https://github.com/libhangul/libhangul) — 키 배열 데이터 출처(LGPL-2.1). 키→자모 대응이라는 사실 데이터만 옮겼고 코드는 포함하지 않는다.
 - GNU Emacs `hangul.el`, uim `byeoru.scm` — 키 배열 교차 검증.
+- [SCOWL](http://wordlist.aspell.net) (Kevin Atkinson) — 단어 판정의 영어 단어 등급. 고지는 [third_party/SCOWL-Copyright.txt](third_party/SCOWL-Copyright.txt).
 - [claude-vime](https://github.com/skanehira/claude-vime) — `prompt.edit` 훅 구조를 참고했다.
 
 ## 라이선스

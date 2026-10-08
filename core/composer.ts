@@ -25,7 +25,7 @@
 //  * 레이아웃에 없는 키(공백, 두벌식 숫자 등)는 consumed=false 로 돌려주고, 조합 중이던 글자는 확정시킨다.
 import { CHO_COMBINE, composeSyllable, isCho, isJong, JONG_COMBINE, JUNG_COMBINE } from './jamo'
 import type { KeyDef } from './keydef'
-import type { Layout } from './layouts'
+import type { Layout, LayoutId } from './layouts'
 
 /** 조합 중 음절. jong 은 받침을 이루는 키 입력 자모들(최대 2개; 직접 겹받침 키는 1개짜리 합성 자모). */
 interface Syl {
@@ -160,6 +160,11 @@ export interface ComposerOptions {
    * false 는 libhangul 기본(option_auto_reorder = false)과 같이 역순이면 확정한다.
    */
   readonly autoReorder?: boolean
+  /**
+   * 단어가 끝났을 때(완성 음절만이라 한글로 남을 단어) 친 키로 되돌릴지 묻는다. true 면 친 키.
+   * 없으면 지금처럼 완성 음절이면 한글. register 는 core/judge 의 decide 를 넣는다.
+   */
+  readonly keepKeys?: (layout: LayoutId, keys: string, hangul: string) => boolean
 }
 
 function isHangulRun(text: string): boolean {
@@ -240,7 +245,9 @@ export class HangulComposer {
     if (latin) return keys
     const tail = render(syl)
     if (closing && !isHangulRun(tail)) return keys
-    return text + tail
+    const word = text + tail
+    if (closing && word !== keys && this.options.keepKeys?.(this.layout.id, keys, word) === true) return keys
+    return word
   }
 
   private step(syl: Syl, def: Exclude<KeyDef, { role: 'lit' }>, ch: string, reorder: boolean): Step {
