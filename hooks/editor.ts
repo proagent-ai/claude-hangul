@@ -115,8 +115,9 @@ export class HangulEditor {
       composing = false
       sealed = true
     }
+    // 조합 중인 단어를 이어 치는 중이면 명령이 아니다. 세벌식 G 는 화면에 / 로 보여 줄 맨 앞에서 명령처럼 보인다.
     const head = e.text.slice(0, e.start) + e.inputText
-    if (isSlashCommandName(head) || isHangulCommand(head)) {
+    if (!composing && (isSlashCommandName(head) || isHangulCommand(head))) {
       if (composing) this.commit()
       return sealed ? { kind: 'pass', edit: e } : { kind: 'pass' }
     }

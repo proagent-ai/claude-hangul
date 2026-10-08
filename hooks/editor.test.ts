@@ -342,4 +342,19 @@ describe('HangulEditor (prompt.edit 어댑터)', () => {
     b.edit({ start: 1, end: 2, inputText: 'Z' })
     expect(b.text).toBe('heZ')
   })
+
+  test('세벌식 줄 맨 앞 G…: G 가 / 로 보여도 슬래시 명령으로 끊지 않고 줄 중간과 같게 조합', () => {
+    const head = newBox('sebeolsik-390')
+    head.type('GitHub ')
+    const mid = newBox('sebeolsik-390')
+    mid.type('x GitHub ')
+    expect(head.text).toBe(mid.text.slice(2))
+    expect(head.text).not.toBe('/itHub ')
+  })
+
+  test('세벌식 줄 맨 앞에서 / 키로 시작하면 여전히 슬래시 명령 이름', () => {
+    const b = newBox('sebeolsik-390')
+    b.type('/help')
+    expect(b.text).toBe('/help')
+  })
 })

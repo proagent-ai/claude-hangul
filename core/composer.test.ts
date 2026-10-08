@@ -266,6 +266,12 @@ describe('세벌식 390', () => {
     expect(s3('390')).toBe('390')
     expect(sf('390')).toBe('390')
   })
+
+  test('ㅋ(0)·ㅠ(5)처럼 숫자 키로 된 음절도 단어 안에서는 한글: 큐를, 쿠키. 숫자만인 단어는 숫자', () => {
+    expect(s3('05ygw')).toBe('큐를')
+    expect(s3('090d')).toBe('쿠키')
+    expect(s3('390')).toBe('390')
+  })
   test('백스페이스 자모 해체: 한 → 하 → ㅎ → 빈', () => {
     const c = make('sebeolsik-390')
     c.typeAll('mfs')

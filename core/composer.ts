@@ -47,10 +47,12 @@ function jongChar(parts: readonly string[]): string | undefined {
   return undefined
 }
 
-/** 완성 음절이면 한글, 아니면 친 키 그대로. 숫자만이면 세벌식 자모로 바꾸지 않는다. */
+/**
+ * 완성 음절이면 한글, 아니면 친 키 그대로.
+ * 숫자만인 경우는 단어 단위로 replay 가 거른다. 음절 단위로 거르면 세벌식 큐(05)·쿠(09)가 숫자가 된다.
+ */
 function render(s: Syl): string {
   if (isEmpty(s)) return ''
-  if (/^\d+$/.test(s.keys)) return s.keys
   const t = jongChar(s.jong) ?? ''
   if (s.cho !== '' && s.jung !== '') {
     const syl = composeSyllable(s.cho, s.jung, t)
