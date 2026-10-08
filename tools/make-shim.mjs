@@ -3,4 +3,5 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 mkdirSync('node_modules/claude-code', { recursive: true })
 writeFileSync('node_modules/claude-code/package.json', JSON.stringify({ name: 'claude-code', version: '0.0.0-shim', exports: { './testing': './testing.js' } }))
-writeFileSync('node_modules/claude-code/testing.js', "export * from 'bun:test'\n")
+// bun 은 내장 모듈 bun:test 의 재export(`export *`, `export { } from`)를 풀지 못해 값으로 받아 내보낸다.
+writeFileSync('node_modules/claude-code/testing.js', "import * as t from 'bun:test'\nexport const { describe, expect, test, mock } = t\n")
