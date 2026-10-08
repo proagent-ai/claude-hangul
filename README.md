@@ -32,10 +32,11 @@ Claude Code에 일을 시키면 한 줄에 한글 요청과 영어 코드가 섞
 
 - **한/영 전환이 꼬인다.** `fetchUser` 가 `ㄹㄷㅅ초ㅕㄴㄷㄱ` 이 되고, 고쳐 치면 `함수에` 가 `gkatndp` 가 된다.
 - **macOS 전환 키가 씹힌다.** 누른 줄 알았는데 안 바뀌어 있다.
-- **모바일에는 세벌식이 없다.** iPhone · iPad · Android 기본 키보드는 세벌식을 지원하지 않는다. 외장 키보드로 SSH 접속해 Claude Code를 쓰는 세벌식 사용자는 칠 방법이 없었다.
+- **모바일에는 세벌식이 없다.** iPhone · iPad는 외장 키보드로 세벌식을 칠 방법이 아예 없고, Android는 기본 키보드에 없어 별도 입력기를 깔아야 한다.
+- **iOS SSH 앱에서는 한글이 깨진다.** OS 한글 입력기로 Claude Code에 치면 자모가 흩어진다. 업스트림 이슈([#15705](https://github.com/anthropics/claude-code/issues/15705), [#23226](https://github.com/anthropics/claude-code/issues/23226))는 고치지 않기로 닫혔다.
 
 claude-hangul은 OS 입력기를 영어에 둔 채로 Claude Code 안에서 직접 한글을 조합한다.
-코드는 친 그대로, 한글은 한글로. 전환 키를 누를 일이 없다.
+코드는 친 그대로, 한글은 한글로. 전환 키를 누를 일이 없고, 입력기를 따로 깔 필요도 없다.
 
 제품 요구는 [docs/PRD.md](docs/PRD.md), 구현 근거는 [docs/SPEC.md](docs/SPEC.md).
 
@@ -53,15 +54,22 @@ Claude Code 2.1.287 이상.
 
 ### 모바일에서 세벌식으로
 
-iPad · Android 태블릿 + 외장 키보드로 Mac이나 서버에 SSH 접속해 Claude Code를 쓰는 경우.
+**외장 키보드 + 터미널 앱(SSH/mosh)으로 호스트의 Claude Code에 접속할 때** 동작한다.
 
-1. 태블릿 입력 언어를 **영어**로 둔다. 한글 입력은 claude-hangul이 맡는다.
-2. 외장 키보드의 언어 전환 단축키를 끈다. 실수로 눌러도 한글 IME로 넘어가지 않게.
-3. 한글 폰트를 보여 주는 터미널 앱을 쓴다.
-4. 접속한 쪽의 locale을 UTF-8로 둔다.
-5. Claude Code에서 `/hangul 390` (또는 `/hangul final`).
+| 경로 | 동작 |
+|---|---|
+| iPad · Android 터미널 앱 → SSH/mosh → Claude Code | 된다 |
+| Claude 앱 · Remote Control | 안 된다. 글이 입력창을 거치지 않고 통째로 도착한다 |
+| 모바일 브라우저의 claude.ai/code (클라우드 세션) | 안 된다. 플러그인이 로드되지 않는다 |
+| 화면 키보드 | 대상 아님. 외장 키보드 전용 |
 
-원격 지연으로 키가 몇 개씩 묶여 와도 한 글자씩 친 것으로 조합한다.
+1. 기기 입력 언어를 **영어**로 둔다. 한글은 claude-hangul이 조합한다.
+2. 언어 전환 키를 모두 끈다. iPad는 설정 > 일반 > 키보드 > 하드웨어 키보드에서 **Caps Lock으로 언어 전환**을 끈다(iPadOS 버전마다 이름이 조금 다르다). Globe·⌃Space 전환도 쓰지 않는다. 실제 Caps Lock이 켜지면 세벌식에서 숫자·기호가 나온다.
+3. 자동 수정·추천 단어를 끈다. mosh를 쓰면 `mosh --predict=never` (`-n`).
+4. 한글 폰트를 보여 주는 터미널 앱, 접속한 쪽 locale은 UTF-8.
+5. 호스트 셸 프로필에 `export HANGUL_LAYOUT=390` (또는 `final`)을 두면 매번 `/hangul 390` 을 칠 필요가 없다.
+
+앱별 설정, 증상별 원인, 문제를 알릴 때 남길 로그는 [docs/mobile.md](docs/mobile.md).
 Claude Code 프롬프트에서만 동작하고, 셸이나 다른 프로그램 입력은 건드리지 않는다.
 
 ### 개발
@@ -124,7 +132,7 @@ mod는 Claude Code early access API라 릴리스마다 바뀔 수 있다.
 - 음절이 아닌 조각이 확정되면 그 단어는 친 키 그대로다. 세벌식 `hello` 는 `hello` 다.
 - 숫자만인 단어(`390`, `123`)는 숫자다. `?` `,` `!` 처럼 표에 없는 기호는 친 문자다.
 - 두벌식 숫자·기호는 친 문자 그대로다.
-- 원격 접속 지연으로 키가 몇 개씩 묶여 와도 한 글자씩 친 것으로 조합한다. 줄바꿈 없이 8글자 이하면 키 묶음, 그보다 길면 붙여넣기로 보고 원문 그대로 넣는다.
+- 원격 접속 지연으로 키가 몇 개씩 한 번에 오면, 줄바꿈 없는 ASCII 8글자 이하는 한 글자씩 친 것으로 조합하고 그보다 길면 붙여넣기로 보고 원문 그대로 넣는다. 실제 원격 환경에서의 묶음 크기는 아직 재 보지 않았다([로드맵](docs/ROADMAP.md)).
 - 한 음절로 끝나는 짧은 영어는 한글로 남는다. 두벌식 `to` 는 `새`.
 
 세벌식 시프트 숫자·기호는 레이아웃 표대로 바뀐다. 390 `J K L` 은 `4 5 6`, `B` 는 `!`. 최종 `J` 는 `1`, `B` 는 `?`.
@@ -140,8 +148,6 @@ claude plugin test .
 claude plugin validate .claude-plugin/plugin.json
 npx -p typescript@5.9.3 tsc -p .
 ```
-
-`claude plugin test .` 는 141개 통과 (CLI 2.1.289).
 
 ## 구성
 
