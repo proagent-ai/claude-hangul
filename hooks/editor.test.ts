@@ -38,6 +38,10 @@ class Box {
   paste(text: string) {
     this.edit({ start: this.cursor, end: this.cursor, inputText: text })
   }
+  /** key 를 null 로 실어 보낸 키 묶음. 엔진이 key 를 빼는지 null 로 주는지 실측 전이라 둘 다 받는다. */
+  fold(text: string) {
+    this.edit({ start: this.cursor, end: this.cursor, inputText: text, key: null as unknown as KeyEvent })
+  }
   press(key: KeyEvent) {
     this.edit({ start: this.cursor, end: this.cursor, inputText: '', key })
   }
@@ -262,5 +266,56 @@ describe('HangulEditor (prompt.edit 어댑터)', () => {
     b.editor.setLayout(LAYOUTS['sebeolsik-390'])
     b.type('mfs')
     expect(b.text).toBe('한한')
+  })
+
+  test('key 가 null 로 온 키 묶음도 한 글자씩 조합한다', () => {
+    const b = newBox('sebeolsik-390')
+    b.type('mfs')
+    b.fold('kgw')
+    expect(b.text).toBe('한글')
+  })
+
+  // 열린 영어 단어(390 hel → 화면 녀l)가 확정 때 hel 로 돌아가며 길이가 바뀐다. 그 앞쪽 위치는 밀리면 안 된다.
+  test('열린 영어 단어 앞을 지우는 ctrl+u 는 줄 전체를 지운다', () => {
+    const b = newBox('sebeolsik-390')
+    b.type('ab hel')
+    expect(b.text).toBe('ab 녀l')
+    b.edit({ start: 0, end: b.text.length, inputText: '', key: { key: 'u', ctrl: true } })
+    expect(b.text).toBe('')
+  })
+
+  test('열린 영어 단어 앞의 백스페이스는 그 자리 글자를 지운다', () => {
+    const b = newBox('sebeolsik-390')
+    b.type('ab hel')
+    b.edit({ start: 0, end: 1, inputText: '', key: { key: 'backspace' } })
+    expect(b.text).toBe('b hel')
+  })
+
+  test('열린 영어 단어 뒤에서 Home 으로 가면 커서는 0', () => {
+    const b = newBox('sebeolsik-390')
+    b.type('x hel')
+    b.edit({ start: 0, end: 0, inputText: '', key: { key: 'home' } })
+    expect(b.text).toBe('x hel')
+    expect(b.cursor).toBe(0)
+  })
+
+  test('열린 영어 단어 밖에서 키를 치면 그 단어는 친 키로 돌아간다', () => {
+    const b = newBox('sebeolsik-390')
+    b.type('x hel')
+    b.cursor = 0
+    b.type('A')
+    expect(b.text).toBe('Ax hel')
+  })
+
+  test('보낼 때 열린 영어 단어는 친 키로 돌아간다', () => {
+    const b = newBox('sebeolsik-390')
+    b.type('x hel')
+    expect(b.editor.commitForSubmit(b.text)).toBe('x hel')
+  })
+
+  test('보낼 텍스트가 화면과 어긋나 있으면 손대지 않는다', () => {
+    const b = newBox('sebeolsik-390')
+    b.type('x hel')
+    expect(b.editor.commitForSubmit('Q' + b.text)).toBe('Qx 녀l')
   })
 })

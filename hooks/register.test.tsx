@@ -82,3 +82,33 @@ test('prompt.submit 은 보낸 텍스트를 그대로 둔다', async ($, on) => 
   const submitted = await $.prompt.submit({ text: '한글', wait: false, origin: { kind: 'composer' } })
   expect(submitted.text).toBe('한글')
 })
+
+// 390 hel 은 입력창에 녀l 로 보인다. 입력창에서 보낸 글만 친 키로 되돌린다.
+async function typeOpenWord($: Engine, on: On) {
+  standInForEngine(on)
+  on('prompt.edit', (_$, e) => ({ text: e.text.slice(0, e.start) + e.inputText + e.text.slice(e.end), cursor: e.start + e.inputText.length }))
+  on('prompt.submit', (_$, e) => ({ text: e.text }))
+  mock.env(on, { HANGUL_LAYOUT: '390' })
+  recordStatus(on)
+  await $.session.start({ cwd: '/work', surface: 'terminal', isInteractive: true })
+  await runHangul($, 'on')
+  let text = ''
+  for (const ch of 'hel') {
+    const r = await $.prompt.edit({ origin: { kind: 'composer' }, key: { key: ch }, text, cursor: text.length, start: text.length, end: text.length, inputText: ch })
+    text = r.text
+  }
+  return text
+}
+
+test('입력창에서 보낸 열린 영어 단어는 친 키로 돌아간다', async ($, on) => {
+  const text = await typeOpenWord($, on)
+  expect(text).toBe('녀l')
+  const submitted = await $.prompt.submit({ text, wait: false, origin: { kind: 'composer' } })
+  expect(submitted.text).toBe('hel')
+})
+
+test('Remote Control(bridge)에서 온 글은 건드리지 않는다', async ($, on) => {
+  const text = await typeOpenWord($, on)
+  const submitted = await $.prompt.submit({ text, wait: false, origin: { kind: 'bridge' } })
+  expect(submitted.text).toBe('녀l')
+})

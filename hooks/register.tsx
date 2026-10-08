@@ -59,7 +59,8 @@ export const register: Register = on => {
   on('prompt.edit', async ($, e, next) => {
     if (trace) {
       $.ui.log(
-        `prompt.edit ${JSON.stringify({ key: e.key ?? null, inputText: e.inputText, start: e.start, end: e.end, cursor: e.cursor, text: e.text })}`,
+        // keyField: 엔진이 key 를 빼는지(absent) null 로 주는지 가린다. 원격 키 묶음 처리가 이 값에 달렸다.
+        `prompt.edit ${JSON.stringify({ keyField: 'key' in e ? (e.key === null ? 'null' : 'set') : 'absent', key: e.key ?? null, inputText: e.inputText, len: e.inputText.length, start: e.start, end: e.end, cursor: e.cursor, text: e.text })}`,
         { to: 'debug' },
       )
     }
@@ -73,8 +74,9 @@ export const register: Register = on => {
   })
 
   on('prompt.submit', async ($, e, next) => {
-    if (trace) $.ui.log(`prompt.submit ${JSON.stringify({ text: e.text })}`, { to: 'debug' })
-    if (editor === undefined) return next(e)
+    if (trace) $.ui.log(`prompt.submit ${JSON.stringify({ origin: e.origin.kind, text: e.text })}`, { to: 'debug' })
+    // 입력창에서 친 글만 확정한다. Remote Control(bridge)·SDK 등에서 온 글은 이 입력창의 조합과 무관하다.
+    if (editor === undefined || e.origin.kind !== 'composer') return next(e)
     const text = editor.commitForSubmit(e.text)
     return next(text === e.text ? e : { ...e, text })
   })
